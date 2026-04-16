@@ -8,51 +8,228 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
 
         html, body {
             min-height: 100vh;
             background: #0d0508;
+            overflow: hidden;
         }
 
+        /* ── TELAS ── */
         .tela {
             position: fixed; inset: 0;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            padding: 24px; text-align: center; gap: 12px;
+            padding: 24px; gap: 0;
             transition: opacity 0.35s;
         }
         .tela.oculta { opacity: 0; pointer-events: none; }
 
-        /* LOADING */
+        /* ── LOADING ── */
         #telaLoading { background: #0d0508; z-index: 10; }
         .load-logo { font-size: 64px; animation: pulse 1.2s ease-in-out infinite; }
         @keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.1);} }
 
-        /* SUCESSO */
-        #telaSucesso { background: #0d0508; }
-        .suc-icon {
-            font-size: 80px;
+        /* ── LOGIN ── */
+        #telaLogin {
+            background: #0d0508;
+            overflow-y: auto;
+        }
+        .orb {
+            position: absolute; border-radius: 50%;
+            pointer-events: none;
+        }
+        .orb1 {
+            width: 320px; height: 320px; top: -80px; left: -80px;
+            background: radial-gradient(circle, rgba(199,91,36,0.45) 0%, transparent 70%);
+            animation: orbFloat1 9s ease-in-out infinite;
+        }
+        .orb2 {
+            width: 240px; height: 240px; bottom: -50px; right: -50px;
+            background: radial-gradient(circle, rgba(241,196,15,0.25) 0%, transparent 70%);
+            animation: orbFloat2 11s ease-in-out infinite;
+        }
+        @keyframes orbFloat1 { 0%,100%{transform:translate(0,0);} 50%{transform:translate(20px,-15px);} }
+        @keyframes orbFloat2 { 0%,100%{transform:translate(0,0);} 50%{transform:translate(-15px,20px);} }
+
+        .login-card {
+            position: relative; z-index: 2;
+            width: 100%; max-width: 360px;
+            animation: cardIn 0.6s cubic-bezier(0.34,1.2,0.64,1) both;
+        }
+        @keyframes cardIn {
+            from { opacity:0; transform:translateY(40px) scale(0.95); }
+            to   { opacity:1; transform:translateY(0) scale(1); }
+        }
+
+        .login-hero { text-align: center; margin-bottom: 28px; }
+        .login-logo {
+            width: 100px; height: 100px; object-fit: contain;
+            filter: drop-shadow(0 0 24px rgba(255,140,60,0.7));
             animation: logoFloat 3.5s ease-in-out infinite;
-            filter: drop-shadow(0 0 24px rgba(37,211,102,0.6));
+            margin-bottom: 14px;
         }
         @keyframes logoFloat { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-12px);} }
-        .suc-title { font-size: 26px; font-weight: 900; color: white; margin-top: 8px; }
-        .suc-valor {
-            font-size: 36px; font-weight: 900;
+        .login-brand { font-size: 26px; font-weight: 900; color: white; line-height: 1.1; }
+        .login-brand span {
+            background: linear-gradient(135deg, #ffd700, #ff9500, #ff6b00);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .login-sub { font-size: 13px; color: rgba(255,255,255,0.35); margin-top: 5px; font-weight: 500; }
+
+        .login-box {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px; padding: 24px;
+        }
+
+        .field-label {
+            font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4);
+            text-transform: uppercase; letter-spacing: 1.5px;
+            display: block; margin-bottom: 8px;
+        }
+        .field-input {
+            width: 100%; padding: 15px 18px;
+            background: rgba(255,255,255,0.07);
+            border: 1.5px solid rgba(255,255,255,0.12);
+            border-radius: 14px; margin-bottom: 14px;
+            font-size: 16px; font-weight: 500;
+            color: white; outline: none;
+            -webkit-appearance: none;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+        .field-input::placeholder { color: rgba(255,255,255,0.25); }
+        .field-input:focus {
+            border-color: rgba(255,150,50,0.7);
+            box-shadow: 0 0 0 3px rgba(199,91,36,0.2);
+        }
+        .prefix-wrap { position: relative; display: flex; align-items: center; margin-bottom: 14px; }
+        .prefix-wrap .prefix {
+            position: absolute; left: 18px;
+            font-weight: 700; color: rgba(255,160,50,0.9); font-size: 15px; pointer-events: none;
+        }
+        .prefix-wrap input { padding-left: 72px !important; margin-bottom: 0; }
+
+        #nameBox { display: none; }
+
+        #loginError {
+            background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.3);
+            border-radius: 12px; padding: 10px 14px;
+            color: #ff6b6b; font-size: 13px; font-weight: 600;
+            margin-bottom: 12px; display: none;
+        }
+
+        .btn-entrar {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, #e8732a, #c75b24, #a84a1b);
+            color: white; border: none; border-radius: 16px;
+            font-size: 16px; font-weight: 800; cursor: pointer;
+            box-shadow: 0 8px 28px rgba(199,91,36,0.45);
+            transition: transform 0.15s;
+            position: relative; overflow: hidden;
+        }
+        .btn-entrar::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+            animation: shimmer 2.5s linear infinite;
+        }
+        @keyframes shimmer { 0%{background-position:-200% center;} 100%{background-position:200% center;} }
+        .btn-entrar:active { transform: scale(0.97); }
+        .btn-entrar:disabled { opacity: 0.65; cursor: not-allowed; }
+
+        /* ── COMPROVANTE ── */
+        #telaComprovante {
+            background: #0d0508;
+            overflow-y: auto;
+            z-index: 5;
+        }
+        .comp-card {
+            position: relative; z-index: 2;
+            width: 100%; max-width: 360px;
+            animation: cardIn 0.6s cubic-bezier(0.34,1.2,0.64,1) both;
+        }
+
+        .comp-header { text-align: center; margin-bottom: 24px; }
+        .comp-icon {
+            font-size: 72px;
+            animation: logoFloat 3.5s ease-in-out infinite;
+            display: block; margin-bottom: 12px;
+            filter: drop-shadow(0 0 20px rgba(0,200,100,0.5));
+        }
+        .comp-title { font-size: 24px; font-weight: 900; color: white; }
+        .comp-subtitle { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px; font-weight: 500; }
+
+        .comp-box {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px; padding: 24px;
+            margin-bottom: 16px;
+        }
+
+        .comp-row {
+            display: flex; flex-direction: column;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .comp-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .comp-row:first-child { padding-top: 0; }
+
+        .comp-row-label {
+            font-size: 10px; font-weight: 700;
+            color: rgba(255,255,255,0.35);
+            text-transform: uppercase; letter-spacing: 1.5px;
+            margin-bottom: 3px;
+        }
+        .comp-row-value {
+            font-size: 15px; font-weight: 700; color: white;
+        }
+        .comp-valor-big {
+            font-size: 28px; font-weight: 900;
             background: linear-gradient(135deg, #25d366, #1aad52);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
-        .suc-info { font-size: 14px; color: rgba(255,255,255,0.45); font-weight: 500; line-height: 1.6; }
 
-        /* ERRO */
-        #telaErro { background: #0d0508; }
-        .err-icon { font-size: 64px; }
-        .err-title { font-size: 22px; font-weight: 900; color: white; }
-        .err-sub { font-size: 14px; color: rgba(255,255,255,0.45); font-weight: 500; line-height: 1.6; max-width: 300px; }
+        .comp-cliente-box {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px; padding: 14px 16px;
+            margin-bottom: 16px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .comp-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, #e8732a, #c75b24);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 900; color: white; flex-shrink: 0;
+        }
+        .comp-cliente-name { font-size: 14px; font-weight: 800; color: white; }
+        .comp-cliente-debt { font-size: 12px; color: rgba(255,255,255,0.45); font-weight: 500; margin-top: 2px; }
+        .comp-cliente-debt span { color: #f39c12; font-weight: 700; }
 
-        /* SEM LINK */
-        #telaSemLink { background: #0d0508; }
+        .btn-confirmar {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, #25d366, #1aad52, #128a3e);
+            color: white; border: none; border-radius: 16px;
+            font-size: 16px; font-weight: 800; cursor: pointer;
+            box-shadow: 0 8px 28px rgba(37,211,102,0.4);
+            transition: transform 0.15s;
+            position: relative; overflow: hidden;
+        }
+        .btn-confirmar::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+            animation: shimmer 2.5s linear infinite;
+        }
+        .btn-confirmar:active { transform: scale(0.97); }
+        .btn-confirmar:disabled { opacity: 0.65; cursor: not-allowed; }
+
+
+        /* ── SEM LINK ── */
+        #telaSemLink {
+            background: #0d0508;
+            text-align: center; gap: 16px;
+        }
         .sem-emoji { font-size: 64px; }
         .sem-titulo { font-size: 22px; font-weight: 900; color: white; }
         .sem-sub { font-size: 14px; color: rgba(255,255,255,0.45); font-weight: 500; line-height: 1.6; max-width: 300px; }
@@ -60,23 +237,91 @@
 </head>
 <body>
 
+<!-- ── LOADING ── -->
 <div id="telaLoading" class="tela">
     <div class="load-logo">💸</div>
 </div>
 
-<div id="telaSucesso" class="tela oculta">
-    <span class="suc-icon">✅</span>
-    <div class="suc-title">Pagamento Registrado!</div>
-    <div class="suc-valor" id="sucValor">—</div>
-    <div class="suc-info" id="sucInfo">—</div>
+<!-- ── LOGIN ── -->
+<div id="telaLogin" class="tela oculta">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="login-card">
+        <div class="login-hero">
+            <img src="icone.png" class="login-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+            <div style="font-size:80px;display:none;">🍗</div>
+            <div class="login-brand">O Rei da <span>Coxinha</span></div>
+            <div class="login-sub">Confirmar pagamento 💸</div>
+        </div>
+
+        <div class="login-box">
+            <div id="loginError"></div>
+
+            <label class="field-label">Seu número (WhatsApp)</label>
+            <div class="prefix-wrap">
+                <span class="prefix">📱 819</span>
+                <input id="userPhone" class="field-input" type="tel" inputmode="numeric"
+                    placeholder="9XXXX-XXXX" maxlength="10"
+                    onkeydown="if(event.key==='Enter')auth()">
+            </div>
+
+            <div id="nameBox">
+                <label class="field-label">Como você se chama?</label>
+                <input id="userName" class="field-input" type="text"
+                    placeholder="Seu nome" maxlength="40"
+                    onkeydown="if(event.key==='Enter')auth()">
+            </div>
+
+            <button id="btnLogin" class="btn-entrar" onclick="auth()">
+                🚀 Entrar e Confirmar
+            </button>
+        </div>
+    </div>
 </div>
 
-<div id="telaErro" class="tela oculta">
-    <div class="err-icon">❌</div>
-    <div class="err-title">Erro ao registrar</div>
-    <div class="err-sub">Não foi possível registrar o pagamento. Verifique sua internet e tente abrir o link novamente.</div>
+<!-- ── COMPROVANTE ── -->
+<div id="telaComprovante" class="tela oculta">
+    <div class="orb orb1" style="background:radial-gradient(circle,rgba(37,211,102,0.2) 0%,transparent 70%);"></div>
+    <div class="comp-card">
+        <div class="comp-header">
+            <span class="comp-icon">💸</span>
+            <div class="comp-title">Comprovante PIX</div>
+            <div class="comp-subtitle">Confirme os dados antes de registrar</div>
+        </div>
+
+        <!-- Info do cliente -->
+        <div class="comp-cliente-box">
+            <div class="comp-avatar" id="clienteAvatar">?</div>
+            <div>
+                <div class="comp-cliente-name" id="clienteNome">—</div>
+                <div class="comp-cliente-debt">Dívida atual: <span id="clienteDebt">R$ 0,00</span></div>
+            </div>
+        </div>
+
+        <!-- Dados do comprovante -->
+        <div class="comp-box">
+            <div class="comp-row">
+                <div class="comp-row-label">Valor</div>
+                <div class="comp-row-value comp-valor-big" id="compValor">—</div>
+            </div>
+            <div class="comp-row">
+                <div class="comp-row-label">Data e Hora</div>
+                <div class="comp-row-value" id="compDataHora">—</div>
+            </div>
+            <div class="comp-row">
+                <div class="comp-row-label">Quem recebeu (Destino)</div>
+                <div class="comp-row-value" id="compDestino">—</div>
+            </div>
+        </div>
+
+        <button id="btnConfirmar" class="btn-confirmar" onclick="confirmarPagamento()">
+            ✅ Confirmar Pagamento
+        </button>
+    </div>
 </div>
 
+
+<!-- ── SEM LINK ── -->
 <div id="telaSemLink" class="tela oculta">
     <div class="sem-emoji">🔗</div>
     <div class="sem-titulo">Link inválido</div>
@@ -84,93 +329,271 @@
 </div>
 
 <script>
-const SUPABASE_URL = "https://vpeyqgijajywgswmezlh.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZXlxZ2lqYWp5d2dzd21lemxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTM1MDIsImV4cCI6MjA4NjgyOTUwMn0.LA5Cbof7IKWAA7l8YbCuPzANpCy0rX_Dro4l9fcDgoQ";
+// ── CONFIG ──────────────────────────────────────────────────
+const SUPABASE_URL  = "https://vpeyqgijajywgswmezlh.supabase.co";
+const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZXlxZ2lqYWp5d2dzd21lemxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTM1MDIsImV4cCI6MjA4NjgyOTUwMn0.LA5Cbof7IKWAA7l8YbCuPzANpCy0rX_Dro4l9fcDgoQ";
 const PHONE_ALIASES = { "81987650178": "81986633773" };
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let user     = null;
+let pixDados = null; // { valor, valorNum, data, hora, destino, plataforma }
 
-function mostrar(id) {
-    ['telaLoading','telaSucesso','telaErro','telaSemLink'].forEach(t => {
-        document.getElementById(t).classList.add('oculta');
-    });
-    document.getElementById(id).classList.remove('oculta');
-}
-
-// Formato: ?R$20,00=16/04/2026=09:54:34=JeffersonLeandro=PicPay#81987650178
+// ── PARSE URL PIX ────────────────────────────────────────────
+// Formato: ?R$20,00=16/04/2026=09:54:34=JeffersonLeandro=PicPay
 function parsearURLPix() {
     const search = decodeURIComponent(window.location.search);
     if (!search) return null;
 
+    // Remove o '?' inicial e divide por '='
     const raw = search.substring(1);
     const partes = raw.split('=');
+
     if (partes.length < 4) return null;
 
-    const valorRaw   = partes[0];
-    const data       = partes[1];
-    const hora       = partes[2];
-    const nomeRaw    = partes[3];
-    const plataforma = partes[4] || '';
+    const valorRaw    = partes[0]; // ex: "R$20,00"
+    const data        = partes[1]; // ex: "16/04/2026"
+    const hora        = partes[2]; // ex: "09:54:34"
+    const nomeRaw     = partes[3]; // ex: "JeffersonLeandro"
+    const plataforma  = partes[4] || ''; // ex: "PicPay"
 
+    // Parseia valor: "R$20,00" → 20.00
     const valorNum = parseFloat(
         valorRaw.replace('R$','').replace(/\./g,'').replace(',','.')
     );
     if (isNaN(valorNum) || valorNum <= 0) return null;
 
+    // Formata nome (CamelCase → "Jefferson Leandro")
     const nomeFormatado = nomeRaw.replace(/([a-z])([A-Z])/g, '$1 $2');
+
     const destino = plataforma
         ? `${nomeFormatado} (via ${plataforma})`
         : nomeFormatado;
 
-    // Phone vem no hash: #819XXXXXXXX
-    let phone = null;
-    const hash = window.location.hash.replace('#','');
-    if (hash) {
-        let p = hash.replace(/\D/g,'');
-        if (p.startsWith('55')) p = p.substring(2);
-        if (PHONE_ALIASES[p]) p = PHONE_ALIASES[p];
-        phone = p;
+    return {
+        valor:      valorRaw.startsWith('R$') ? valorRaw : `R$ ${valorRaw}`,
+        valorNum,
+        data,
+        hora,
+        destino
+    };
+}
+
+// ── TELAS ────────────────────────────────────────────────────
+function mostrar(id) {
+    ['telaLoading','telaLogin','telaComprovante','telaSemLink'].forEach(t => {
+        document.getElementById(t).classList.add('oculta');
+    });
+    const el = document.getElementById(id);
+    el.classList.remove('oculta');
+}
+
+
+// ── ERRO DE LOGIN ─────────────────────────────────────────────
+function loginErro(msg) {
+    const el = document.getElementById('loginError');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+// ── PREENCHER COMPROVANTE ─────────────────────────────────────
+function chavePixRegistrado() {
+    if (!pixDados) return null;
+    return `salgados_pix_${pixDados.valor}_${pixDados.data}_${pixDados.hora}`;
+}
+
+function pixJaRegistrado() {
+    const chave = chavePixRegistrado();
+    return chave ? localStorage.getItem(chave) === '1' : false;
+}
+
+function marcarPixRegistrado() {
+    const chave = chavePixRegistrado();
+    if (chave) localStorage.setItem(chave, '1');
+}
+
+function preencherComprovante() {
+    if (!pixDados || !user) return;
+
+    // Avatar (inicial do nome)
+    document.getElementById('clienteAvatar').textContent = user.name.charAt(0).toUpperCase();
+    document.getElementById('clienteNome').textContent   = user.name;
+
+    const debtFmt = user.debt > 0
+        ? `R$ ${user.debt.toFixed(2).replace('.',',')}`
+        : user.debt < 0
+            ? `- R$ ${Math.abs(user.debt).toFixed(2).replace('.',',')} (crédito)`
+            : 'R$ 0,00';
+    document.getElementById('clienteDebt').textContent = debtFmt;
+
+    // Dados PIX
+    document.getElementById('compValor').textContent    = pixDados.valor;
+    document.getElementById('compDataHora').textContent = `${pixDados.data} às ${pixDados.hora}`;
+    document.getElementById('compDestino').textContent  = pixDados.destino;
+
+    // Verifica se esse PIX já foi registrado
+    if (pixJaRegistrado()) {
+        const btn = document.getElementById('btnConfirmar');
+        btn.disabled = true;
+        btn.textContent = '✅ Pix já registrado';
+        btn.style.background = 'linear-gradient(135deg, #128a3e, #1aad52)';
+    }
+}
+
+// ── CONFIRMAR PAGAMENTO ───────────────────────────────────────
+async function confirmarPagamento() {
+    if (!pixDados || !user) return;
+
+    const btn = document.getElementById('btnConfirmar');
+    btn.disabled = true;
+    btn.textContent = 'Registrando...';
+
+    try {
+        // Busca debt atual (fresco do banco)
+        const { data: clienteAtual, error: errBusca } = await sb
+            .from('clientes')
+            .select('debt')
+            .eq('phone', user.phone)
+            .maybeSingle();
+
+        if (errBusca || !clienteAtual) throw new Error('Cliente não encontrado');
+
+        const debtAtual  = Number(clienteAtual.debt) || 0;
+        const novoDebt   = debtAtual - pixDados.valorNum;
+
+        // Atualiza debt
+        const { error: errUpdate } = await sb
+            .from('clientes')
+            .update({ debt: novoDebt })
+            .eq('phone', user.phone);
+
+        if (errUpdate) throw errUpdate;
+
+        // Atualiza cache local
+        user.debt = novoDebt;
+        localStorage.setItem('salgados_user', JSON.stringify(user));
+
+        // Marca esse PIX como já registrado
+        marcarPixRegistrado();
+
+        btn.textContent = '✅ Pagamento Registrado!';
+        btn.style.background = 'linear-gradient(135deg, #128a3e, #1aad52)';
+
+    } catch(err) {
+        console.error('Erro ao registrar pagamento:', err);
+        btn.disabled  = false;
+        btn.textContent = '✅ Confirmar Pagamento';
+        alert('Erro ao registrar. Verifique sua internet e tente de novo.');
+    }
+}
+
+// ── AUTH ──────────────────────────────────────────────────────
+async function auth() {
+    const btn = document.getElementById('btnLogin');
+    btn.disabled = true;
+    btn.textContent = 'Entrando...';
+    document.getElementById('loginError').style.display = 'none';
+
+    let phone;
+    const savedPhone = localStorage.getItem('salgados_phone');
+    if (savedPhone) {
+        phone = savedPhone;
+    } else {
+        let partial = document.getElementById('userPhone').value.replace(/\D/g,'');
+        if (partial.startsWith('55')) partial = partial.substring(2);
+        if (partial.length < 8) {
+            loginErro('Digite o número completo (mínimo 8 dígitos)');
+            btn.disabled = false; btn.textContent = '🚀 Entrar e Confirmar';
+            return;
+        }
+        partial = partial.slice(-8);
+        phone = '819' + partial;
+        if (PHONE_ALIASES[phone]) phone = PHONE_ALIASES[phone];
     }
 
-    return { valor: valorRaw.startsWith('R$') ? valorRaw : `R$ ${valorRaw}`, valorNum, data, hora, destino, phone };
+    try {
+        let { data: client } = await sb.from('clientes').select('*').eq('phone', phone).maybeSingle();
+
+        if (!client) {
+            // Novo usuário — pedir nome
+            const nb = document.getElementById('nameBox');
+            if (nb.style.display === 'none' || nb.style.display === '') {
+                nb.style.display = 'block';
+                btn.disabled = false; btn.textContent = '🚀 Entrar e Confirmar';
+                document.getElementById('userName').focus();
+                return;
+            }
+            const name = document.getElementById('userName').value.trim();
+            if (!name) {
+                loginErro('Digite seu nome');
+                btn.disabled = false; btn.textContent = '🚀 Entrar e Confirmar';
+                return;
+            }
+            const { data: newClient, error } = await sb.from('clientes')
+                .insert({ name, phone, debt: 0 }).select().single();
+            if (error) throw error;
+            client = newClient;
+        }
+
+        user = {
+            name: client.name, phone: client.phone, debt: client.debt,
+            created_at: client.created_at, oferta_ativa: client.oferta_ativa
+        };
+        localStorage.setItem('salgados_phone', phone);
+        localStorage.setItem('salgados_user',  JSON.stringify(user));
+
+        btn.disabled = false; btn.textContent = '🚀 Entrar e Confirmar';
+
+        // Preenche e exibe comprovante
+        preencherComprovante();
+        mostrar('telaComprovante');
+
+    } catch(e) {
+        console.error('Auth error:', e);
+        loginErro('Erro de conexão. Tente novamente.');
+        btn.disabled = false; btn.textContent = '🚀 Entrar e Confirmar';
+    }
 }
 
-async function registrarPagamento(pixDados) {
-    const { data: clienteAtual, error: errBusca } = await sb
-        .from('clientes')
-        .select('debt')
-        .eq('phone', pixDados.phone)
-        .maybeSingle();
-
-    if (errBusca || !clienteAtual) throw new Error('Cliente não encontrado');
-
-    const novoDebt = (Number(clienteAtual.debt) || 0) - pixDados.valorNum;
-
-    const { error: errUpdate } = await sb
-        .from('clientes')
-        .update({ debt: novoDebt })
-        .eq('phone', pixDados.phone);
-
-    if (errUpdate) throw errUpdate;
-}
-
+// ── INIT ──────────────────────────────────────────────────────
 window.onload = async () => {
-    const pixDados = parsearURLPix();
-
-    if (!pixDados || !pixDados.phone) {
+    pixDados = parsearURLPix();
+    if (!pixDados) {
         mostrar('telaSemLink');
         return;
     }
 
-    try {
-        await registrarPagamento(pixDados);
-        document.getElementById('sucValor').textContent = pixDados.valor;
-        document.getElementById('sucInfo').textContent = `${pixDados.data} às ${pixDados.hora} — ${pixDados.destino}`;
-        mostrar('telaSucesso');
-    } catch(err) {
-        console.error('Erro:', err);
-        mostrar('telaErro');
+    const guard = setTimeout(() => mostrar('telaLogin'), 10000);
+
+    const savedPhone = localStorage.getItem('salgados_phone');
+    if (savedPhone) {
+        try {
+            const { data: client } = await sb.from('clientes')
+                .select('*').eq('phone', savedPhone).maybeSingle();
+            if (client) {
+                user = {
+                    name: client.name, phone: client.phone, debt: client.debt,
+                    created_at: client.created_at, oferta_ativa: client.oferta_ativa
+                };
+                localStorage.setItem('salgados_user', JSON.stringify(user));
+                clearTimeout(guard);
+                preencherComprovante();
+                mostrar('telaComprovante');
+                return;
+            }
+        } catch(e) {
+            const cached = localStorage.getItem('salgados_user');
+            if (cached) {
+                user = JSON.parse(cached);
+                clearTimeout(guard);
+                preencherComprovante();
+                mostrar('telaComprovante');
+                return;
+            }
+        }
     }
+
+    clearTimeout(guard);
+    mostrar('telaLogin');
 };
 </script>
 </body>
