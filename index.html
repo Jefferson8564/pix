@@ -338,6 +338,35 @@
 </div>
 
 <script>
+// ── SOM PIX ──────────────────────────────────────────────────
+function tocarSomPix(repeticoes = 3) {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const notas = [1046.50, 1318.51, 1567.98, 2093.00]; // C6 E6 G6 C7
+
+        function tocarUmaVez(delay) {
+            let t = ctx.currentTime + delay;
+            notas.forEach(freq => {
+                const osc  = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, t);
+                gain.gain.setValueAtTime(1.0, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+                osc.start(t);
+                osc.stop(t + 0.4);
+                t += 0.18;
+            });
+        }
+
+        for (let i = 0; i < repeticoes; i++) {
+            tocarUmaVez(i * 1.1);
+        }
+    } catch(e) { /* silencioso se não suportado */ }
+}
+
 // ── CONFIG ──────────────────────────────────────────────────
 const SUPABASE_URL  = "https://vpeyqgijajywgswmezlh.supabase.co";
 const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZXlxZ2lqYWp5d2dzd21lemxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTM1MDIsImV4cCI6MjA4NjgyOTUwMn0.LA5Cbof7IKWAA7l8YbCuPzANpCy0rX_Dro4l9fcDgoQ";
@@ -513,6 +542,9 @@ async function confirmarPagamento() {
         // Status de sucesso
         status.className   = 'comp-status sucesso';
         status.textContent = '✅ Pix registrado com sucesso ✅';
+
+        // Som de confirmação (3x)
+        tocarSomPix(3);
 
         // Animação da dívida diminuindo (R$4/s)
         animarDivida(debtAtual, novoDebt);
