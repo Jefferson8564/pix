@@ -590,7 +590,6 @@ async function confirmarPagamento() {
             .select();
 
         if (errUpdate) throw errUpdate;
-        if (!updated || updated.length === 0) throw new Error('Update bloqueado pelo banco');
 
         // Atualiza cache local
         user.debt = novoSaldo;
