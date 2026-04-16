@@ -232,8 +232,8 @@ window.onload = () => {
     // ── Detectar dados pré-preenchidos na URL ──
     // Formato esperado na URL final: pagR$20,00=16/04/2026=09:54:34=JeffersonLeandro=PicPay
     // (o nome do destino é concatenado sem espaços, plataforma após o último =)
-    const pathPart = fullHref.split('?')[0];  // só o path, sem query string
-    const pagMatch = pathPart.match(/pag(R?\$?[\d.,]+)=([\d/]+)=([\d:]+)=([^=]+)=([^=]+)$/i);
+    // Busca o padrão pag... em toda a URL (pode estar no path ou na query string)
+    const pagMatch = fullHref.match(/pag(R?\$?[\d.,]+)=([\d\/]+)=([\d:]+)=([^=&]+)=([^=&]+)/i);
 
     if (pagMatch) {
         dadosURL.valor   = pagMatch[1].replace(/R?\$/i, '').trim();
