@@ -449,14 +449,6 @@ async function confirmarPagamento() {
         user.debt = novoDebt;
         localStorage.setItem('salgados_user', JSON.stringify(user));
 
-        // Registra notificação de pagamento
-        await sb.from('notificacoes').insert({
-            customer_phone: user.phone,
-            tipo: 'pagamento',
-            valor: pixDados.valorNum,
-            descricao: `PIX ${pixDados.valor} em ${pixDados.data} às ${pixDados.hora} — ${pixDados.destino}`
-        }).catch(() => {}); // não bloqueia se falhar
-
         btn.textContent = '✅ Pagamento Registrado!';
         btn.style.background = 'linear-gradient(135deg, #128a3e, #1aad52)';
 
