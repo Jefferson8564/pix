@@ -547,33 +547,40 @@ async function confirmarPagamento() {
     roboEstado('salvando');
 
     try {
+        // Normaliza o phone igual ao que foi salvo no banco
+        let phoneNorm = user.phone;
+        if (PHONE_ALIASES[phoneNorm]) phoneNorm = PHONE_ALIASES[phoneNorm];
+
         // Busca debt atual (fresco do banco)
         const { data: clienteAtual, error: errBusca } = await sb
             .from('clientes')
-            .select('debt')
-            .eq('phone', user.phone)
+            .select('debt, phone')
+            .eq('phone', phoneNorm)
             .maybeSingle();
 
         if (errBusca || !clienteAtual) throw new Error('Cliente não encontrado');
 
-        const debtAtual  = Number(clienteAtual.debt) || 0;
-        const novoDebt   = debtAtual - pixDados.valorNum;
+        // Usa o phone exato que está no banco para o update
+        const phoneNoBanco = clienteAtual.phone;
+        const debtAtual    = Number(clienteAtual.debt) || 0;
+        const novoDebt     = debtAtual - pixDados.valorNum;
 
         // Atualiza debt
         const { error: errUpdate } = await sb
             .from('clientes')
             .update({ debt: novoDebt })
-            .eq('phone', user.phone);
+            .eq('phone', phoneNoBanco);
 
         if (errUpdate) throw errUpdate;
 
         // Atualiza cache local
-        user.debt = novoDebt;
+        user.debt  = novoDebt;
+        user.phone = phoneNoBanco; // garante o phone correto no cache
         localStorage.setItem('salgados_user', JSON.stringify(user));
 
         // Registra notificação de pagamento
         await sb.from('notificacoes').insert({
-            customer_phone: user.phone,
+            customer_phone: phoneNoBanco,
             tipo: 'pagamento',
             valor: pixDados.valorNum,
             descricao: `PIX ${pixDados.valor} em ${pixDados.data} às ${pixDados.hora} — ${pixDados.destino}`
