@@ -560,12 +560,14 @@ async function confirmarPagamento() {
         const novoDebt   = debtAtual - pixDados.valorNum;
 
         // Atualiza debt
-        const { error: errUpdate } = await sb
+        const { data: updated, error: errUpdate } = await sb
             .from('clientes')
             .update({ debt: novoDebt })
-            .eq('phone', user.phone);
+            .eq('phone', user.phone)
+            .select();
 
         if (errUpdate) throw errUpdate;
+        if (!updated || updated.length === 0) throw new Error('Update bloqueado pelo banco');
 
         // Atualiza cache local
         user.debt = novoDebt;
@@ -575,8 +577,7 @@ async function confirmarPagamento() {
         await sb.from('notificacoes').insert({
             customer_phone: user.phone,
             tipo: 'pagamento',
-            valor: pixDados.valorNum,
-            descricao: `PIX ${pixDados.valor} em ${pixDados.data} às ${pixDados.hora} — ${pixDados.destino}`
+            valor: pixDados.valorNum
         }).catch(() => {}); // não bloqueia se falhar
 
         roboEstado('sim');
