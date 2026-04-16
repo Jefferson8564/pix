@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Comprovante Pix 💸</title>
+    <title>Pagamento PIX 💸</title>
+    <link rel="icon" href="icone.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -12,412 +13,691 @@
         html, body {
             min-height: 100vh;
             background: #0d0508;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            padding: 24px;
+            overflow: hidden;
         }
 
-        .orb { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; }
+        /* ── TELAS ── */
+        .tela {
+            position: fixed; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 24px; gap: 0;
+            transition: opacity 0.35s;
+        }
+        .tela.oculta { opacity: 0; pointer-events: none; }
+
+        /* ── LOADING ── */
+        #telaLoading { background: #0d0508; z-index: 10; }
+        .load-logo { font-size: 64px; animation: pulse 1.2s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.1);} }
+
+        /* ── LOGIN ── */
+        #telaLogin {
+            background: #0d0508;
+            overflow-y: auto;
+        }
+        .orb {
+            position: absolute; border-radius: 50%;
+            pointer-events: none;
+        }
         .orb1 {
             width: 320px; height: 320px; top: -80px; left: -80px;
-            background: radial-gradient(circle, rgba(37,211,102,0.3) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(199,91,36,0.45) 0%, transparent 70%);
             animation: orbFloat1 9s ease-in-out infinite;
         }
         .orb2 {
             width: 240px; height: 240px; bottom: -50px; right: -50px;
-            background: radial-gradient(circle, rgba(241,196,15,0.2) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(241,196,15,0.25) 0%, transparent 70%);
             animation: orbFloat2 11s ease-in-out infinite;
         }
         @keyframes orbFloat1 { 0%,100%{transform:translate(0,0);} 50%{transform:translate(20px,-15px);} }
         @keyframes orbFloat2 { 0%,100%{transform:translate(0,0);} 50%{transform:translate(-15px,20px);} }
 
-        .card {
+        .login-card {
             position: relative; z-index: 2;
-            width: 100%; max-width: 380px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 28px; padding: 28px 24px;
-            animation: cardIn 0.55s cubic-bezier(0.34,1.2,0.64,1) both;
+            width: 100%; max-width: 360px;
+            animation: cardIn 0.6s cubic-bezier(0.34,1.2,0.64,1) both;
         }
         @keyframes cardIn {
             from { opacity:0; transform:translateY(40px) scale(0.95); }
             to   { opacity:1; transform:translateY(0) scale(1); }
         }
 
-        .header { text-align: center; margin-bottom: 22px; }
-        .header-icon { font-size: 56px; margin-bottom: 10px; display: block; animation: bounce 2s ease-in-out infinite; }
-        @keyframes bounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
-        .header-title { font-size: 22px; font-weight: 900; color: white; }
-        .header-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px; font-weight: 500; }
+        .login-hero { text-align: center; margin-bottom: 28px; }
+        .login-logo {
+            width: 100px; height: 100px; object-fit: contain;
+            filter: drop-shadow(0 0 24px rgba(255,140,60,0.7));
+            animation: logoFloat 3.5s ease-in-out infinite;
+            margin-bottom: 14px;
+        }
+        @keyframes logoFloat { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-12px);} }
+        .login-brand { font-size: 26px; font-weight: 900; color: white; line-height: 1.1; }
+        .login-brand span {
+            background: linear-gradient(135deg, #ffd700, #ff9500, #ff6b00);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .login-sub { font-size: 13px; color: rgba(255,255,255,0.35); margin-top: 5px; font-weight: 500; }
 
-        /* Resumo do pedido */
-        .pedido-box {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px; padding: 14px 16px;
-            margin-bottom: 18px; display: none;
-        }
-        .pedido-label {
-            font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.35);
-            text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;
-        }
-        .pedido-texto { font-size: 13px; color: rgba(255,255,255,0.75); white-space: pre-line; line-height: 1.65; font-weight: 500; }
-        .pedido-total {
-            margin-top: 10px; padding-top: 10px;
-            border-top: 1px solid rgba(255,255,255,0.08);
-            font-size: 16px; font-weight: 800; color: #25d366;
+        .login-box {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px; padding: 24px;
         }
 
-        /* Campos */
-        .field { margin-bottom: 14px; }
         .field-label {
             font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4);
             text-transform: uppercase; letter-spacing: 1.5px;
-            display: block; margin-bottom: 7px;
+            display: block; margin-bottom: 8px;
         }
         .field-input {
-            width: 100%; padding: 14px 16px;
+            width: 100%; padding: 15px 18px;
             background: rgba(255,255,255,0.07);
             border: 1.5px solid rgba(255,255,255,0.12);
-            border-radius: 14px; font-size: 15px; font-weight: 500; color: white;
-            outline: none; -webkit-appearance: none;
+            border-radius: 14px; margin-bottom: 14px;
+            font-size: 16px; font-weight: 500;
+            color: white; outline: none;
+            -webkit-appearance: none;
             transition: border-color 0.25s, box-shadow 0.25s;
         }
-        .field-input::placeholder { color: rgba(255,255,255,0.22); }
+        .field-input::placeholder { color: rgba(255,255,255,0.25); }
         .field-input:focus {
-            border-color: rgba(37,211,102,0.7);
-            box-shadow: 0 0 0 3px rgba(37,211,102,0.15);
+            border-color: rgba(255,150,50,0.7);
+            box-shadow: 0 0 0 3px rgba(199,91,36,0.2);
         }
-        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .prefix-wrap { position: relative; display: flex; align-items: center; margin-bottom: 14px; }
+        .prefix-wrap .prefix {
+            position: absolute; left: 18px;
+            font-weight: 700; color: rgba(255,160,50,0.9); font-size: 15px; pointer-events: none;
+        }
+        .prefix-wrap input { padding-left: 72px !important; margin-bottom: 0; }
 
-        /* Botão enviar */
-        .btn-enviar {
+        #nameBox { display: none; }
+
+        #loginError {
+            background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.3);
+            border-radius: 12px; padding: 10px 14px;
+            color: #ff6b6b; font-size: 13px; font-weight: 600;
+            margin-bottom: 12px; display: none;
+        }
+
+        .btn-entrar {
             width: 100%; padding: 16px;
-            background: linear-gradient(135deg, #1aad52, #25d366, #128c3e);
+            background: linear-gradient(135deg, #e8732a, #c75b24, #a84a1b);
             color: white; border: none; border-radius: 16px;
             font-size: 16px; font-weight: 800; cursor: pointer;
-            box-shadow: 0 8px 28px rgba(37,211,102,0.35);
-            transition: transform 0.15s; margin-top: 4px;
+            box-shadow: 0 8px 28px rgba(199,91,36,0.45);
+            transition: transform 0.15s;
+            position: relative; overflow: hidden;
         }
-        .btn-enviar:active { transform: scale(0.97); }
-        .btn-enviar:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-entrar::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+            animation: shimmer 2.5s linear infinite;
+        }
+        @keyframes shimmer { 0%{background-position:-200% center;} 100%{background-position:200% center;} }
+        .btn-entrar:active { transform: scale(0.97); }
+        .btn-entrar:disabled { opacity: 0.65; cursor: not-allowed; }
 
-        /* Aviso duplicata */
-        #avisDuplicata {
-            display: none;
-            background: rgba(241,196,15,0.1);
-            border: 1px solid rgba(241,196,15,0.35);
-            border-radius: 16px; padding: 16px;
+        /* ── COMPROVANTE ── */
+        #telaComprovante {
+            background: #0d0508;
+            overflow-y: auto;
+            z-index: 5;
+        }
+        .comp-card {
+            position: relative; z-index: 2;
+            width: 100%; max-width: 360px;
+            animation: cardIn 0.6s cubic-bezier(0.34,1.2,0.64,1) both;
+        }
+
+        .comp-header { text-align: center; margin-bottom: 24px; }
+        .comp-icon {
+            font-size: 72px;
+            animation: logoFloat 3.5s ease-in-out infinite;
+            display: block; margin-bottom: 12px;
+            filter: drop-shadow(0 0 20px rgba(0,200,100,0.5));
+        }
+        .comp-title { font-size: 24px; font-weight: 900; color: white; }
+        .comp-subtitle { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px; font-weight: 500; }
+
+        .comp-box {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px; padding: 24px;
             margin-bottom: 16px;
         }
-        .dup-titulo { font-size: 14px; font-weight: 800; color: #f1c40f; margin-bottom: 6px; }
-        .dup-info   { font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.55; font-weight: 500; }
-        .dup-btns   { display: flex; gap: 8px; margin-top: 12px; }
-        .dup-btns button {
-            flex: 1; padding: 11px; border: none; border-radius: 11px;
-            font-size: 13px; font-weight: 700; cursor: pointer;
-        }
-        .btn-dup-ok  { background: linear-gradient(135deg,#1aad52,#25d366); color: white; }
-        .btn-dup-novo { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.8); }
 
-        /* Tela de sucesso */
-        #telaOk { display: none; text-align: center; }
-        .ok-icon { font-size: 90px; display: block; animation: popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both; }
-        @keyframes popIn { from{transform:scale(0.2);opacity:0;} to{transform:scale(1);opacity:1;} }
-        .ok-titulo { font-size: 24px; font-weight: 900; color: white; margin: 16px 0 8px; }
-        .ok-valor {
-            font-size: 36px; font-weight: 900;
+        .comp-row {
+            display: flex; flex-direction: column;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .comp-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .comp-row:first-child { padding-top: 0; }
+
+        .comp-row-label {
+            font-size: 10px; font-weight: 700;
+            color: rgba(255,255,255,0.35);
+            text-transform: uppercase; letter-spacing: 1.5px;
+            margin-bottom: 3px;
+        }
+        .comp-row-value {
+            font-size: 15px; font-weight: 700; color: white;
+        }
+        .comp-valor-big {
+            font-size: 28px; font-weight: 900;
             background: linear-gradient(135deg, #25d366, #1aad52);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-            margin: 18px 0 4px;
         }
-        .ok-sub { font-size: 14px; color: rgba(255,255,255,0.5); font-weight: 500; line-height: 1.5; }
 
-        /* Tela sem params */
-        #telaSemParams { display: none; text-align: center; }
-        .ev-icon   { font-size: 56px; display: block; margin-bottom: 12px; }
-        .ev-titulo { font-size: 20px; font-weight: 800; color: white; margin-bottom: 8px; }
-        .ev-sub    { font-size: 13px; color: rgba(255,255,255,0.4); font-weight: 500; line-height: 1.6; max-width: 280px; margin: 0 auto; }
+        .comp-cliente-box {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px; padding: 14px 16px;
+            margin-bottom: 16px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .comp-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, #e8732a, #c75b24);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 900; color: white; flex-shrink: 0;
+        }
+        .comp-cliente-name { font-size: 14px; font-weight: 800; color: white; }
+        .comp-cliente-debt { font-size: 12px; color: rgba(255,255,255,0.45); font-weight: 500; margin-top: 2px; }
+        .comp-cliente-debt span { color: #f39c12; font-weight: 700; }
+
+        .btn-confirmar {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, #25d366, #1aad52, #128a3e);
+            color: white; border: none; border-radius: 16px;
+            font-size: 16px; font-weight: 800; cursor: pointer;
+            box-shadow: 0 8px 28px rgba(37,211,102,0.4);
+            transition: transform 0.15s;
+            position: relative; overflow: hidden;
+        }
+        .btn-confirmar::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+            animation: shimmer 2.5s linear infinite;
+        }
+        .btn-confirmar:active { transform: scale(0.97); }
+        .btn-confirmar:disabled { opacity: 0.65; cursor: not-allowed; }
+
+        /* ── CONFIRMAÇÃO (ROBÔ) ── */
+        #telaConfirm {
+            background: transparent;
+            z-index: 20;
+        }
+        #telaConfirm.ativo {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+        }
+
+        @keyframes roboEntrar {
+            0%   { transform: translateY(90px) scale(0.4); opacity:0; }
+            60%  { transform: translateY(-18px) scale(1.08); opacity:1; }
+            100% { transform: translateY(0) scale(1); opacity:1; }
+        }
+        @keyframes roboSalvando { 0%,100%{transform:translateY(0) rotate(-3deg);} 50%{transform:translateY(-10px) rotate(3deg);} }
+        @keyframes roboSim { 0%,100%{transform:rotate(-12deg) scale(1.08);} 50%{transform:rotate(12deg) scale(1.08);} }
+        @keyframes roboNao {
+            0%,100%{transform:translateX(0);} 20%{transform:translateX(-14px);} 40%{transform:translateX(14px);}
+            60%{transform:translateX(-10px);} 80%{transform:translateX(10px);}
+        }
+        @keyframes badgeIn {
+            0%{transform:scale(0) rotate(-30deg);opacity:0;}
+            70%{transform:scale(1.3) rotate(5deg);opacity:1;}
+            100%{transform:scale(1) rotate(0);opacity:1;}
+        }
+        @keyframes particula {
+            0%{transform:translate(0,0) scale(1);opacity:1;}
+            100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0;}
+        }
+
+        .robo-wrap {
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            animation: roboEntrar 0.7s cubic-bezier(0.34,1.56,0.64,1) both;
+            padding: 10px;
+        }
+        .robo-emoji { font-size: 110px; display: block; }
+        .robo-badge {
+            position: absolute; bottom: -10px; right: -10px;
+            font-size: 44px; display: none;
+            animation: badgeIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.4s both;
+        }
+        .robo-texto {
+            text-align: center; margin-top: 28px; padding: 0 24px;
+            animation: textoSubir 0.5s ease 0.5s both;
+        }
+        @keyframes textoSubir { from{opacity:0;transform:translateY(18px);} to{opacity:1;transform:translateY(0);} }
+        .robo-titulo { font-size: 26px; font-weight: 900; color: white; letter-spacing: -0.5px; margin-bottom: 8px; }
+        .robo-sub { font-size: 15px; color: rgba(255,255,255,0.7); font-weight: 600; }
+        .robo-particula { position: absolute; font-size: 22px; animation: particula 0.8s ease-out forwards; }
+
+        .state-salvando .robo-emoji {
+            filter: drop-shadow(0 0 20px rgba(241,196,15,0.8));
+            animation: roboSalvando 0.7s ease-in-out infinite;
+        }
+        .state-sim .robo-emoji {
+            filter: drop-shadow(0 0 30px rgba(37,211,102,0.9));
+            animation: roboSim 0.45s ease-in-out infinite;
+        }
+        .state-nao .robo-emoji {
+            filter: drop-shadow(0 0 30px rgba(231,76,60,0.9));
+            animation: roboNao 0.5s ease-in-out 3;
+        }
+
+        /* ── SEM LINK ── */
+        #telaSemLink {
+            background: #0d0508;
+            text-align: center; gap: 16px;
+        }
+        .sem-emoji { font-size: 64px; }
+        .sem-titulo { font-size: 22px; font-weight: 900; color: white; }
+        .sem-sub { font-size: 14px; color: rgba(255,255,255,0.45); font-weight: 500; line-height: 1.6; max-width: 300px; }
     </style>
 </head>
 <body>
-<div class="orb orb1"></div>
-<div class="orb orb2"></div>
 
-<!-- ── FORMULÁRIO ── -->
-<div class="card" id="telaForm">
-    <div class="header">
-        <span class="header-icon">💸</span>
-        <div class="header-title">Enviar Comprovante</div>
-        <div class="header-sub">Preencha os dados do seu Pix</div>
-    </div>
-
-    <!-- Resumo do pedido -->
-    <div class="pedido-box" id="pedidoBox">
-        <div class="pedido-label">Seu pedido</div>
-        <div class="pedido-texto" id="pedidoTextoEl"></div>
-        <div class="pedido-total" id="pedidoTotalEl"></div>
-    </div>
-
-    <!-- Aviso de duplicata -->
-    <div id="avisDuplicata">
-        <div class="dup-titulo">⚠️ Comprovante já enviado</div>
-        <div class="dup-info" id="avisDupInfo"></div>
-        <div class="dup-btns">
-            <button class="btn-dup-ok"  onclick="confirmarEnvioMesmo()">✅ Enviar mesmo assim</button>
-            <button class="btn-dup-novo" onclick="fecharAviso()">✏️ Corrigir dados</button>
-        </div>
-    </div>
-
-    <!-- Campos -->
-    <div class="field">
-        <label class="field-label">💰 Valor pago (R$)</label>
-        <input id="fValor" class="field-input" type="text" inputmode="decimal"
-            placeholder="Ex: 28,00" oninput="formatarValor(this)">
-    </div>
-
-    <div class="row2">
-        <div class="field">
-            <label class="field-label">📅 Data</label>
-            <input id="fData" class="field-input" type="text" inputmode="numeric"
-                placeholder="DD/MM/AAAA" maxlength="10" oninput="maskData(this)">
-        </div>
-        <div class="field">
-            <label class="field-label">⏰ Hora</label>
-            <input id="fHora" class="field-input" type="text" inputmode="numeric"
-                placeholder="HH:MM:SS" maxlength="8" oninput="maskHora(this)">
-        </div>
-    </div>
-
-    <div class="field">
-        <label class="field-label">👤 Destino (quem recebeu)</label>
-        <input id="fDestino" class="field-input" type="text"
-            placeholder="Ex: Jefferson Leandro (PicPay)">
-    </div>
-
-    <button class="btn-enviar" id="btnEnviar" onclick="enviar()">
-        📲 Enviar pelo WhatsApp
-    </button>
+<!-- ── LOADING ── -->
+<div id="telaLoading" class="tela">
+    <div class="load-logo">💸</div>
 </div>
 
-<!-- ── SEM PARAMS ── -->
-<div class="card" id="telaSemParams">
-    <span class="ev-icon">🔗</span>
-    <div class="ev-titulo">Link inválido</div>
-    <div class="ev-sub">Abra o link de comprovante enviado pelo WhatsApp para continuar.</div>
+<!-- ── LOGIN ── -->
+<div id="telaLogin" class="tela oculta">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="login-card">
+        <div class="login-hero">
+            <img src="icone.png" class="login-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+            <div style="font-size:80px;display:none;">🍗</div>
+            <div class="login-brand">O Rei da <span>Coxinha</span></div>
+            <div class="login-sub">Confirmar pagamento 💸</div>
+        </div>
+
+        <div class="login-box">
+            <div id="loginError"></div>
+
+            <label class="field-label">Seu número (WhatsApp)</label>
+            <div class="prefix-wrap">
+                <span class="prefix">📱 819</span>
+                <input id="userPhone" class="field-input" type="tel" inputmode="numeric"
+                    placeholder="9XXXX-XXXX" maxlength="10"
+                    onkeydown="if(event.key==='Enter')auth()">
+            </div>
+
+            <div id="nameBox">
+                <label class="field-label">Como você se chama?</label>
+                <input id="userName" class="field-input" type="text"
+                    placeholder="Seu nome" maxlength="40"
+                    onkeydown="if(event.key==='Enter')auth()">
+            </div>
+
+            <button id="btnLogin" class="btn-entrar" onclick="auth()">
+                🚀 Entrar e Confirmar
+            </button>
+        </div>
+    </div>
 </div>
 
-<!-- ── SUCESSO ── -->
-<div class="card" id="telaOk">
-    <span class="ok-icon">✅</span>
-    <div class="ok-titulo">Comprovante enviado!</div>
-    <div class="ok-valor" id="okValor">R$ 0,00</div>
-    <div class="ok-sub">Abrindo WhatsApp... 📲</div>
+<!-- ── COMPROVANTE ── -->
+<div id="telaComprovante" class="tela oculta">
+    <div class="orb orb1" style="background:radial-gradient(circle,rgba(37,211,102,0.2) 0%,transparent 70%);"></div>
+    <div class="comp-card">
+        <div class="comp-header">
+            <span class="comp-icon">💸</span>
+            <div class="comp-title">Comprovante PIX</div>
+            <div class="comp-subtitle">Confirme os dados antes de registrar</div>
+        </div>
+
+        <!-- Info do cliente -->
+        <div class="comp-cliente-box">
+            <div class="comp-avatar" id="clienteAvatar">?</div>
+            <div>
+                <div class="comp-cliente-name" id="clienteNome">—</div>
+                <div class="comp-cliente-debt">Dívida atual: <span id="clienteDebt">R$ 0,00</span></div>
+            </div>
+        </div>
+
+        <!-- Dados do comprovante -->
+        <div class="comp-box">
+            <div class="comp-row">
+                <div class="comp-row-label">Valor</div>
+                <div class="comp-row-value comp-valor-big" id="compValor">—</div>
+            </div>
+            <div class="comp-row">
+                <div class="comp-row-label">Data e Hora</div>
+                <div class="comp-row-value" id="compDataHora">—</div>
+            </div>
+            <div class="comp-row">
+                <div class="comp-row-label">Quem recebeu (Destino)</div>
+                <div class="comp-row-value" id="compDestino">—</div>
+            </div>
+        </div>
+
+        <button id="btnConfirmar" class="btn-confirmar" onclick="confirmarPagamento()">
+            ✅ Confirmar Pagamento
+        </button>
+    </div>
+</div>
+
+<!-- ── CONFIRMAÇÃO (ROBÔ) ── -->
+<div id="telaConfirm" class="tela oculta">
+    <div id="roboInner" class="state-salvando">
+        <div class="robo-wrap" id="roboWrap">
+            <span class="robo-emoji">🤖</span>
+            <span class="robo-badge" id="roboBadge"></span>
+        </div>
+        <div class="robo-texto">
+            <div class="robo-titulo" id="roboTitulo">Registrando pagamento...</div>
+            <div class="robo-sub" id="roboSub">☁️ Aguarde um segundo!</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── SEM LINK ── -->
+<div id="telaSemLink" class="tela oculta">
+    <div class="sem-emoji">🔗</div>
+    <div class="sem-titulo">Link inválido</div>
+    <div class="sem-sub">Este link de pagamento não contém dados válidos.</div>
 </div>
 
 <script>
-// ── CONFIG ─────────────────────────────────────────────────────
-const ADMIN_NUM    = "81996603348";
-const PIX_BASE_URL = "https://jefferson8564.github.io/pix/pag";
+// ── CONFIG ──────────────────────────────────────────────────
+const SUPABASE_URL  = "https://vpeyqgijajywgswmezlh.supabase.co";
+const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZXlxZ2lqYWp5d2dzd21lemxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTM1MDIsImV4cCI6MjA4NjgyOTUwMn0.LA5Cbof7IKWAA7l8YbCuPzANpCy0rX_Dro4l9fcDgoQ";
+const PHONE_ALIASES = { "81987650178": "81986633773" };
 
-// ── Estado ─────────────────────────────────────────────────────
-let dadosURL    = {};   // dados pré-preenchidos vindos da URL
-let _dadosEnvio = {};   // dados do formulário ao tentar enviar
-let _chaveAtual = '';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let user     = null;
+let pixDados = null; // { valor, valorNum, data, hora, destino, plataforma }
 
-// ── INIT ───────────────────────────────────────────────────────
-window.onload = () => {
-    const fullHref = decodeURIComponent(window.location.href);
+// ── PARSE URL PIX ────────────────────────────────────────────
+// Formato: ?R$20,00=16/04/2026=09:54:34=JeffersonLeandro=PicPay
+function parsearURLPix() {
+    const search = decodeURIComponent(window.location.search);
+    if (!search) return null;
 
-    // ── Detectar dados pré-preenchidos na URL ──
-    // Formato esperado na URL final: pagR$20,00=16/04/2026=09:54:34=JeffersonLeandro=PicPay
-    // (o nome do destino é concatenado sem espaços, plataforma após o último =)
-    // Busca o padrão pag... em toda a URL (pode estar no path ou na query string)
-    const pagMatch = fullHref.match(/pag(R?\$?[\d.,]+)=([\d\/]+)=([\d:]+)=([^=&]+)=([^=&]+)/i);
+    // Remove o '?' inicial e divide por '='
+    const raw = search.substring(1);
+    const partes = raw.split('=');
 
-    if (pagMatch) {
-        dadosURL.valor   = pagMatch[1].replace(/R?\$/i, '').trim();
-        dadosURL.data    = pagMatch[2];
-        dadosURL.hora    = pagMatch[3];
-        // Reconstrói destino legível: "JeffersonLeandro (PicPay)"
-        const nomeRaw    = pagMatch[4];
-        const plat       = pagMatch[5];
-        // Insere espaços antes de maiúsculas (camelCase → palavras)
-        const nomeLeg    = nomeRaw.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');
-        dadosURL.destino = nomeLeg + ' (' + plat + ')';
-        preencherCampos();
+    if (partes.length < 4) return null;
+
+    const valorRaw    = partes[0]; // ex: "R$20,00"
+    const data        = partes[1]; // ex: "16/04/2026"
+    const hora        = partes[2]; // ex: "09:54:34"
+    const nomeRaw     = partes[3]; // ex: "JeffersonLeandro"
+    const plataforma  = partes[4] || ''; // ex: "PicPay"
+
+    // Parseia valor: "R$20,00" → 20.00
+    const valorNum = parseFloat(
+        valorRaw.replace('R$','').replace(/\./g,'').replace(',','.')
+    );
+    if (isNaN(valorNum) || valorNum <= 0) return null;
+
+    // Formata nome (CamelCase → "Jefferson Leandro")
+    const nomeFormatado = nomeRaw.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+    const destino = plataforma
+        ? `${nomeFormatado} (via ${plataforma})`
+        : nomeFormatado;
+
+    return {
+        valor:      valorRaw.startsWith('R$') ? valorRaw : `R$ ${valorRaw}`,
+        valorNum,
+        data,
+        hora,
+        destino
+    };
+}
+
+// ── TELAS ────────────────────────────────────────────────────
+function mostrar(id) {
+    ['telaLoading','telaLogin','telaComprovante','telaConfirm','telaSemLink'].forEach(t => {
+        document.getElementById(t).classList.add('oculta');
+    });
+    const el = document.getElementById(id);
+    el.classList.remove('oculta');
+    if (id === 'telaConfirm') setTimeout(() => el.classList.add('ativo'), 50);
+}
+
+// ── ROBÔ ─────────────────────────────────────────────────────
+function roboEstado(estado) {
+    const inner  = document.getElementById('roboInner');
+    const badge  = document.getElementById('roboBadge');
+    const titulo = document.getElementById('roboTitulo');
+    const sub    = document.getElementById('roboSub');
+    inner.className = 'state-' + estado;
+    if (estado === 'salvando') {
+        badge.style.display = 'none';
+        titulo.textContent = 'Registrando pagamento...';
+        sub.textContent = '☁️ Aguarde um segundo!';
+        sub.style.color = 'rgba(255,255,255,0.7)';
+    } else if (estado === 'sim') {
+        badge.style.display = 'block';
+        badge.textContent = '✅';
+        titulo.textContent = 'Pagamento registrado!';
+        sub.textContent = `${pixDados?.valor || ''} abatido da dívida 🎉`;
+        sub.style.color = 'rgba(255,255,255,0.7)';
+        // Partículas
+        const wrap = document.getElementById('roboWrap');
+        ['💸','⭐','✨','🎊','💚','🎉','⭐','✨'].forEach((emoji, i) => {
+            const p = document.createElement('span');
+            p.className = 'robo-particula';
+            p.textContent = emoji;
+            const angle = (i / 8) * 360;
+            const dist  = 90 + Math.random() * 60;
+            p.style.setProperty('--dx', Math.cos(angle * Math.PI/180) * dist + 'px');
+            p.style.setProperty('--dy', Math.sin(angle * Math.PI/180) * dist + 'px');
+            p.style.animationDelay    = (0.1 + i * 0.07) + 's';
+            p.style.animationDuration = '0.7s';
+            wrap.appendChild(p);
+            setTimeout(() => p.remove(), 1500);
+        });
+    } else if (estado === 'nao') {
+        badge.style.display = 'block';
+        badge.textContent = '❌';
+        titulo.textContent = 'Não consegui registrar!';
+        sub.textContent = 'Verifique sua internet e tente de novo.';
+        sub.style.color = 'rgba(255,120,120,0.95)';
     }
-
-    // ── Dados do pedido via query string ──
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('pedido')) {
-        dadosURL.pedidoTexto = params.get('pedido');
-        dadosURL.pedidoTotal = params.get('total') || '';
-        mostrarResumoPedido();
-    }
-
-    // Tela inicial: se o path não contém "pag" de jeito nenhum, avisa
-    const temPath = fullHref.includes('/pag');
-    if (!temPath) {
-        document.getElementById('telaForm').style.display    = 'none';
-        document.getElementById('telaSemParams').style.display = 'block';
-    }
-};
-
-// ── Preencher campos ───────────────────────────────────────────
-function preencherCampos() {
-    if (dadosURL.valor)   document.getElementById('fValor').value   = dadosURL.valor;
-    if (dadosURL.data)    document.getElementById('fData').value    = dadosURL.data;
-    if (dadosURL.hora)    document.getElementById('fHora').value    = dadosURL.hora;
-    if (dadosURL.destino) document.getElementById('fDestino').value = dadosURL.destino;
 }
 
-// ── Resumo do pedido ───────────────────────────────────────────
-function mostrarResumoPedido() {
-    if (!dadosURL.pedidoTexto) return;
-    document.getElementById('pedidoTextoEl').textContent = dadosURL.pedidoTexto;
-    if (dadosURL.pedidoTotal)
-        document.getElementById('pedidoTotalEl').textContent = '💰 Total: R$ ' + dadosURL.pedidoTotal;
-    document.getElementById('pedidoBox').style.display = 'block';
+// ── ERRO DE LOGIN ─────────────────────────────────────────────
+function loginErro(msg) {
+    const el = document.getElementById('loginError');
+    el.textContent = msg;
+    el.style.display = 'block';
 }
 
-// ── Máscaras de input ──────────────────────────────────────────
-function formatarValor(el) {
-    el.value = el.value.replace(/[^\d,\.]/g, '');
-}
-function maskData(el) {
-    let v = el.value.replace(/\D/g, '');
-    if (v.length > 2) v = v.slice(0,2) + '/' + v.slice(2);
-    if (v.length > 5) v = v.slice(0,5) + '/' + v.slice(5,9);
-    el.value = v;
-}
-function maskHora(el) {
-    let v = el.value.replace(/\D/g, '');
-    if (v.length > 2) v = v.slice(0,2) + ':' + v.slice(2);
-    if (v.length > 5) v = v.slice(0,5) + ':' + v.slice(5,7);
-    el.value = v;
+// ── PREENCHER COMPROVANTE ─────────────────────────────────────
+function preencherComprovante() {
+    if (!pixDados || !user) return;
+
+    // Avatar (inicial do nome)
+    document.getElementById('clienteAvatar').textContent = user.name.charAt(0).toUpperCase();
+    document.getElementById('clienteNome').textContent   = user.name;
+
+    const debtFmt = user.debt > 0
+        ? `R$ ${user.debt.toFixed(2).replace('.',',')}`
+        : user.debt < 0
+            ? `- R$ ${Math.abs(user.debt).toFixed(2).replace('.',',')} (crédito)`
+            : 'R$ 0,00';
+    document.getElementById('clienteDebt').textContent = debtFmt;
+
+    // Dados PIX
+    document.getElementById('compValor').textContent   = pixDados.valor;
+    document.getElementById('compDataHora').textContent = `${pixDados.data} às ${pixDados.hora}`;
+    document.getElementById('compDestino').textContent  = pixDados.destino;
 }
 
-// ── Chave única do comprovante (salva no localStorage) ─────────
-// Baseada em valor + data + hora — identifica unicamente a transação Pix
-function montarChavePix(valor, data, hora) {
-    return 'pix_' + valor.replace(/[^0-9]/g,'')
-                  + '_' + data.replace(/\//g,'')
-                  + '_' + hora.replace(/:/g,'');
-}
+// ── CONFIRMAR PAGAMENTO ───────────────────────────────────────
+async function confirmarPagamento() {
+    if (!pixDados || !user) return;
 
-// ── Montar URL do comprovante no formato da Lara ───────────────
-// Saída: pagR$20,00=16/04/2026=09:54:34=JeffersonLeandro=PicPay
-function montarPixUrl(valor, data, hora, destino) {
-    // Separa nome da plataforma: "Jefferson Leandro (PicPay)" → nome + plat
-    const match = destino.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-    let nomePart, platPart;
-    if (match) {
-        nomePart = match[1].replace(/\s+/g, '');  // sem espaços
-        platPart = match[2].replace(/\s+/g, '');
-    } else {
-        nomePart = destino.replace(/\s+/g, '');
-        platPart = 'Pix';
-    }
-    return PIX_BASE_URL + 'R$' + valor + '=' + data + '=' + hora + '=' + nomePart + '=' + platPart;
-}
+    const btn = document.getElementById('btnConfirmar');
+    btn.disabled = true;
+    btn.textContent = 'Registrando...';
 
-// ── localStorage ───────────────────────────────────────────────
-function verificarDuplicataLocal(chave) {
+    mostrar('telaConfirm');
+    roboEstado('salvando');
+
     try {
-        const s = localStorage.getItem(chave);
-        return s ? JSON.parse(s) : null;
-    } catch { return null; }
-}
-function salvarLocal(chave, dados) {
-    try { localStorage.setItem(chave, JSON.stringify({ ...dados, ts: Date.now() })); }
-    catch(e) { console.warn('localStorage indisponível:', e); }
-}
+        // Busca debt atual (fresco do banco)
+        const { data: clienteAtual, error: errBusca } = await sb
+            .from('clientes')
+            .select('debt')
+            .eq('phone', user.phone)
+            .maybeSingle();
 
-// ── Fechar aviso de duplicata ──────────────────────────────────
-function fecharAviso() {
-    document.getElementById('avisDuplicata').style.display = 'none';
-}
+        if (errBusca || !clienteAtual) throw new Error('Cliente não encontrado');
 
-// ── Confirmar mesmo com duplicata ─────────────────────────────
-function confirmarEnvioMesmo() {
-    fecharAviso();
-    executarEnvio(_dadosEnvio);
-}
+        const debtAtual  = Number(clienteAtual.debt) || 0;
+        const novoDebt   = debtAtual - pixDados.valorNum;
 
-// ── ENVIAR ─────────────────────────────────────────────────────
-async function enviar() {
-    const valor   = document.getElementById('fValor').value.trim();
-    const data    = document.getElementById('fData').value.trim();
-    const hora    = document.getElementById('fHora').value.trim();
-    const destino = document.getElementById('fDestino').value.trim();
+        // Atualiza debt
+        const { error: errUpdate } = await sb
+            .from('clientes')
+            .update({ debt: novoDebt })
+            .eq('phone', user.phone);
 
-    // Validação
-    if (!valor || !data || !hora || !destino) {
-        alert('Preencha todos os campos antes de enviar.'); return;
+        if (errUpdate) throw errUpdate;
+
+        // Atualiza cache local
+        user.debt = novoDebt;
+        localStorage.setItem('salgados_user', JSON.stringify(user));
+
+        // Registra notificação de pagamento
+        await sb.from('notificacoes').insert({
+            customer_phone: user.phone,
+            tipo: 'pagamento',
+            valor: pixDados.valorNum,
+            descricao: `PIX ${pixDados.valor} em ${pixDados.data} às ${pixDados.hora} — ${pixDados.destino}`
+        }).catch(() => {}); // não bloqueia se falhar
+
+        roboEstado('sim');
+
+    } catch(err) {
+        console.error('Erro ao registrar pagamento:', err);
+        roboEstado('nao');
+        btn.disabled  = false;
+        btn.textContent = '✅ Confirmar Pagamento';
     }
-    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(data)) {
-        alert('Data inválida. Use DD/MM/AAAA.'); return;
-    }
-    if (!/^\d{2}:\d{2}(:\d{2})?$/.test(hora)) {
-        alert('Hora inválida. Use HH:MM ou HH:MM:SS.'); return;
+}
+
+// ── AUTH ──────────────────────────────────────────────────────
+async function auth() {
+    const btn = document.getElementById('btnLogin');
+    btn.disabled = true;
+    btn.textContent = 'Entrando...';
+    document.getElementById('loginError').style.display = 'none';
+
+    let phone;
+    const savedPhone = localStorage.getItem('salgados_phone');
+    if (savedPhone) {
+        phone = savedPhone;
+    } else {
+        let partial = document.getElementById('userPhone').value.replace(/\D/g,'');
+        if (partial.startsWith('55')) partial = partial.substring(2);
+        if (partial.length < 8) {
+            loginErro('Digite o número completo (mínimo 8 dígitos)');
+            btn.disabled = false; btn.textContent = '🚀 Entrar e Confirmar';
+            return;
+        }
+        partial = partial.slice(-8);
+        phone = '819' + partial;
+        if (PHONE_ALIASES[phone]) phone = PHONE_ALIASES[phone];
     }
 
-    _dadosEnvio = { valor, data, hora, destino };
-    _chaveAtual = montarChavePix(valor, data, hora);
+    try {
+        let { data: client } = await sb.from('clientes').select('*').eq('phone', phone).maybeSingle();
 
-    // ── Verificar duplicata no localStorage ANTES de enviar ──
-    const dup = verificarDuplicataLocal(_chaveAtual);
-    if (dup) {
-        const mins = Math.round((Date.now() - dup.ts) / 60000);
-        const tempoTexto = mins < 2 ? 'há instantes' : `há ${mins} min`;
-        document.getElementById('avisDupInfo').textContent =
-            `Você já enviou um comprovante de R$ ${valor} em ${data} às ${hora} (${tempoTexto}). ` +
-            `Quer enviar de novo ou corrigir os dados?`;
-        document.getElementById('avisDuplicata').style.display = 'block';
-        document.getElementById('avisDuplicata').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (!client) {
+            // Novo usuário — pedir nome
+            const nb = document.getElementById('nameBox');
+            if (nb.style.display === 'none' || nb.style.display === '') {
+                nb.style.display = 'block';
+                btn.disabled = false; btn.textContent = '🚀 Entrar e Confirmar';
+                document.getElementById('userName').focus();
+                return;
+            }
+            const name = document.getElementById('userName').value.trim();
+            if (!name) {
+                loginErro('Digite seu nome');
+                btn.disabled = false; btn.textContent = '🚀 Entrar e Confirmar';
+                return;
+            }
+            const { data: newClient, error } = await sb.from('clientes')
+                .insert({ name, phone, debt: 0 }).select().single();
+            if (error) throw error;
+            client = newClient;
+        }
+
+        user = {
+            name: client.name, phone: client.phone, debt: client.debt,
+            created_at: client.created_at, oferta_ativa: client.oferta_ativa
+        };
+        localStorage.setItem('salgados_phone', phone);
+        localStorage.setItem('salgados_user',  JSON.stringify(user));
+
+        btn.disabled = false; btn.textContent = '🚀 Entrar e Confirmar';
+
+        // Preenche e exibe comprovante
+        preencherComprovante();
+        mostrar('telaComprovante');
+
+    } catch(e) {
+        console.error('Auth error:', e);
+        loginErro('Erro de conexão. Tente novamente.');
+        btn.disabled = false; btn.textContent = '🚀 Entrar e Confirmar';
+    }
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+window.onload = async () => {
+    pixDados = parsearURLPix();
+    if (!pixDados) {
+        mostrar('telaSemLink');
         return;
     }
 
-    executarEnvio(_dadosEnvio);
-}
+    const guard = setTimeout(() => mostrar('telaLogin'), 10000);
 
-// ── Executar envio ─────────────────────────────────────────────
-async function executarEnvio({ valor, data, hora, destino }) {
-    const btn = document.getElementById('btnEnviar');
-    btn.disabled = true;
-    btn.textContent = 'Enviando...';
+    const savedPhone = localStorage.getItem('salgados_phone');
+    if (savedPhone) {
+        try {
+            const { data: client } = await sb.from('clientes')
+                .select('*').eq('phone', savedPhone).maybeSingle();
+            if (client) {
+                user = {
+                    name: client.name, phone: client.phone, debt: client.debt,
+                    created_at: client.created_at, oferta_ativa: client.oferta_ativa
+                };
+                localStorage.setItem('salgados_user', JSON.stringify(user));
+                clearTimeout(guard);
+                preencherComprovante();
+                mostrar('telaComprovante');
+                return;
+            }
+        } catch(e) {
+            const cached = localStorage.getItem('salgados_user');
+            if (cached) {
+                user = JSON.parse(cached);
+                clearTimeout(guard);
+                preencherComprovante();
+                mostrar('telaComprovante');
+                return;
+            }
+        }
+    }
 
-    const chave  = montarChavePix(valor, data, hora);
-    const pixUrl = montarPixUrl(valor, data, hora, destino);
-
-    // ── Salvar no localStorage ANTES de abrir WhatsApp ──
-    // Isso garante que mesmo se o usuário voltar e tentar enviar de novo,
-    // o sistema vai detectar a duplicata
-    salvarLocal(chave, { valor, data, hora, destino, pixUrl });
-
-    // ── Montar mensagem no formato da Lara i.a ──
-    // Regra: no link usar apenas texto do pedido, sem variáveis de nome
-    const pedidoLinhas = dadosURL.pedidoTexto
-        ? '\n\n' + dadosURL.pedidoTexto
-        : '';
-
-    const msg =
-        `👩🏻‍🦰 *𝕃𝔸ℝ𝔸 𝕚.𝕒*\n` +
-        `Valor pago ✅: R$ ${valor}` +
-        `${pedidoLinhas}\n\n` +
-        `${pixUrl}`;
-
-    // ── Tela de sucesso ──
-    document.getElementById('telaForm').style.display = 'none';
-    document.getElementById('telaOk').style.display   = 'block';
-    document.getElementById('okValor').textContent    = 'R$ ' + valor;
-
-    // ── Abrir WhatsApp após 1,5s ──
-    setTimeout(() => {
-        window.location.href = `https://api.whatsapp.com/send?phone=55${ADMIN_NUM}&text=${encodeURIComponent(msg)}`;
-    }, 1500);
-}
+    clearTimeout(guard);
+    mostrar('telaLogin');
+};
 </script>
 </body>
 </html>
