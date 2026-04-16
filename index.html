@@ -547,22 +547,45 @@ async function confirmarPagamento() {
     roboEstado('salvando');
 
     try {
-        // Busca debt atual (fresco do banco)
-        const { data: clienteAtual, error: errBusca } = await sb
+        const val = pixDados.valorNum;
+
+        // Busca dados atuais do cliente (fresco do banco)
+        const { data: c, error: errBusca } = await sb
             .from('clientes')
-            .select('debt')
+            .select('debt, name, tickets, diamantes, total_acumulado')
             .eq('phone', user.phone)
-            .maybeSingle();
+            .single();
 
-        if (errBusca || !clienteAtual) throw new Error('Cliente não encontrado');
+        if (errBusca || !c) throw new Error('Cliente não encontrado');
 
-        const debtAtual  = Number(clienteAtual.debt) || 0;
-        const novoDebt   = debtAtual - pixDados.valorNum;
+        const novoSaldo = (Number(c.debt) || 0) - val;
 
-        // Atualiza debt
+        // Busca configurações de ticket e diamante
+        const [cfgTk, cfgDi] = await Promise.all([
+            sb.from('configs').select('value').eq('key', 'ticket_valor_reais').maybeSingle(),
+            sb.from('configs').select('value').eq('key', 'diamante_valor_reais').maybeSingle(),
+        ]);
+        const valorTicket   = cfgTk.data?.value ? Number(cfgTk.data.value) : 0;
+        const valorDiamante = cfgDi.data?.value ? Number(cfgDi.data.value) : 0;
+
+        // Tickets: acumula sobre total_acumulado
+        const acumuladoAtual = Number(c.total_acumulado || 0);
+        const novoAcumulado  = acumuladoAtual + val;
+        const novosTickets   = valorTicket > 0 ? Math.floor(novoAcumulado / valorTicket) : 0;
+        const sobra          = valorTicket > 0 ? novoAcumulado % valorTicket : novoAcumulado;
+
+        // Diamantes: calcula direto no valor pago
+        const novosDiamantes = valorDiamante > 0 ? Math.floor(val / valorDiamante) : 0;
+
+        // Atualiza tudo de uma vez
         const { data: updated, error: errUpdate } = await sb
             .from('clientes')
-            .update({ debt: novoDebt })
+            .update({
+                debt:            novoSaldo,
+                tickets:         (Number(c.tickets   || 0)) + novosTickets,
+                diamantes:       (Number(c.diamantes || 0)) + novosDiamantes,
+                total_acumulado: sobra,
+            })
             .eq('phone', user.phone)
             .select();
 
@@ -570,15 +593,26 @@ async function confirmarPagamento() {
         if (!updated || updated.length === 0) throw new Error('Update bloqueado pelo banco');
 
         // Atualiza cache local
-        user.debt = novoDebt;
+        user.debt = novoSaldo;
         localStorage.setItem('salgados_user', JSON.stringify(user));
 
-        // Registra notificação de pagamento
+        // Monta histórico da notificação (igual ao ADM)
+        const now = new Date();
+        const dataHora = now.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const saldoTexto = novoSaldo > 0
+            ? `Saldo devedor restante: R$ ${novoSaldo.toFixed(2).replace('.', ',')}`
+            : novoSaldo < 0
+                ? `Crédito a favor: R$ ${Math.abs(novoSaldo).toFixed(2).replace('.', ',')}`
+                : `✅ Quitado`;
+        const mioloHistorico = `──────────────────\n👤 Cliente: ${c.name}\n📅 Data/Hora: ${dataHora}\n💰 Valor pago: R$ ${val.toFixed(2).replace('.', ',')}\n${saldoTexto}\n──────────────────`;
+
+        // Registra notificação
         await sb.from('notificacoes').insert({
             customer_phone: user.phone,
             tipo: 'pagamento',
-            valor: pixDados.valorNum
-        }).catch(() => {}); // não bloqueia se falhar
+            valor: val,
+            descricao: mioloHistorico
+        }).catch(() => {});
 
         roboEstado('sim');
 
