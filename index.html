@@ -150,15 +150,8 @@
             animation: cardIn 0.6s cubic-bezier(0.34,1.2,0.64,1) both;
         }
 
-        .comp-header { text-align: center; margin-bottom: 24px; }
-        .comp-icon {
-            font-size: 72px;
-            animation: logoFloat 3.5s ease-in-out infinite;
-            display: block; margin-bottom: 12px;
-            filter: drop-shadow(0 0 20px rgba(0,200,100,0.5));
-        }
+        .comp-header { text-align: center; margin-bottom: 20px; }
         .comp-title { font-size: 24px; font-weight: 900; color: white; }
-        .comp-subtitle { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px; font-weight: 500; }
 
         .comp-box {
             background: rgba(255,255,255,0.06);
@@ -224,6 +217,23 @@
         .btn-confirmar:active { transform: scale(0.97); }
         .btn-confirmar:disabled { opacity: 0.65; cursor: not-allowed; }
 
+        .comp-status {
+            text-align: center;
+            font-size: 14px; font-weight: 700;
+            width: 100%; margin-top: 16px;
+            padding: 12px 16px; border-radius: 14px;
+        }
+        .comp-status.sucesso {
+            color: #25d366;
+            background: rgba(37,211,102,0.08);
+            border: 1px solid rgba(37,211,102,0.2);
+        }
+        .comp-status.duplicado {
+            color: #e74c3c;
+            background: rgba(231,76,60,0.08);
+            border: 1px solid rgba(231,76,60,0.2);
+        }
+
 
         /* ── SEM LINK ── */
         #telaSemLink {
@@ -284,19 +294,19 @@
 <div id="telaComprovante" class="tela oculta">
     <div class="orb orb1" style="background:radial-gradient(circle,rgba(37,211,102,0.2) 0%,transparent 70%);"></div>
     <div class="comp-card">
-        <div class="comp-header">
-            <span class="comp-icon">💸</span>
-            <div class="comp-title">Comprovante PIX</div>
-            <div class="comp-subtitle" id="compSubtitle">Registrando pagamento...</div>
-        </div>
 
-        <!-- Info do cliente -->
+        <!-- Info do cliente — TOPO -->
         <div class="comp-cliente-box">
             <div class="comp-avatar" id="clienteAvatar">?</div>
             <div>
                 <div class="comp-cliente-name" id="clienteNome">—</div>
                 <div class="comp-cliente-debt">Dívida atual: <span id="clienteDebt">R$ 0,00</span></div>
             </div>
+        </div>
+
+        <!-- Título -->
+        <div class="comp-header">
+            <div class="comp-title">Comprovante PIX</div>
         </div>
 
         <!-- Dados do comprovante -->
@@ -315,7 +325,7 @@
             </div>
         </div>
 
-        <div id="compStatus" class="comp-subtitle" style="margin-top:16px;font-size:15px;font-weight:700;color:rgba(255,255,255,0.4);">Registrando pagamento...</div>
+        <div id="compStatus" class="comp-status"></div>
     </div>
 </div>
 
@@ -429,15 +439,38 @@ function preencherComprovante() {
     document.getElementById('compDataHora').textContent = `${pixDados.data} às ${pixDados.hora}`;
     document.getElementById('compDestino').textContent  = pixDados.destino;
 
-    // Verifica se esse PIX já foi registrado
+    // Status
     const status = document.getElementById('compStatus');
     if (pixJaRegistrado()) {
-        status.textContent = '✅ Pix já registrado';
-        status.style.color = '#25d366';
+        status.className   = 'comp-status duplicado';
+        status.textContent = '❌ Pagamento já registrado ❌';
     } else {
-        status.textContent = 'Registrando pagamento...';
-        status.style.color = 'rgba(255,255,255,0.4)';
+        status.className   = 'comp-status';
+        status.textContent = '';
     }
+}
+
+// ── ANIMAÇÃO DA DÍVIDA ────────────────────────────────────────
+// Velocidade: R$4/s → 400 centavos/s → 4 centavos a cada 10ms
+function animarDivida(deStart, deEnd) {
+    const el = document.getElementById('clienteDebt');
+    let centAtual = Math.round(deStart * 100);
+    const centFinal = Math.round(deEnd * 100);
+    if (centAtual <= centFinal) return; // nada a animar
+
+    const intervalo = setInterval(() => {
+        centAtual -= 4;
+        if (centAtual <= centFinal) {
+            centAtual = centFinal;
+            clearInterval(intervalo);
+        }
+        const val = centAtual / 100;
+        el.textContent = val > 0
+            ? `R$ ${val.toFixed(2).replace('.',',')}`
+            : val < 0
+                ? `- R$ ${Math.abs(val).toFixed(2).replace('.',',')} (crédito)`
+                : 'R$ 0,00';
+    }, 10);
 }
 
 // ── CONFIRMAR PAGAMENTO ───────────────────────────────────────
@@ -446,8 +479,8 @@ async function confirmarPagamento() {
     if (pixJaRegistrado()) return;
 
     const status = document.getElementById('compStatus');
-    status.textContent = 'Registrando...';
-    status.style.color = 'rgba(255,255,255,0.4)';
+    status.className   = 'comp-status';
+    status.textContent = '';
 
     try {
         // Busca debt atual (fresco do banco)
@@ -477,21 +510,17 @@ async function confirmarPagamento() {
         // Marca esse PIX como já registrado
         marcarPixRegistrado();
 
-        status.textContent = '✅ Pagamento Registrado!';
-        status.style.color = '#25d366';
+        // Status de sucesso
+        status.className   = 'comp-status sucesso';
+        status.textContent = '✅ Pix registrado com sucesso ✅';
 
-        // Atualiza dívida exibida
-        const debtFmt = novoDebt > 0
-            ? `R$ ${novoDebt.toFixed(2).replace('.',',')}`
-            : novoDebt < 0
-                ? `- R$ ${Math.abs(novoDebt).toFixed(2).replace('.',',')} (crédito)`
-                : 'R$ 0,00';
-        document.getElementById('clienteDebt').textContent = debtFmt;
+        // Animação da dívida diminuindo (R$4/s)
+        animarDivida(debtAtual, novoDebt);
 
     } catch(err) {
         console.error('Erro ao registrar pagamento:', err);
+        status.className   = 'comp-status duplicado';
         status.textContent = '❌ Erro ao registrar. Tente recarregar.';
-        status.style.color = '#ff6b6b';
     }
 }
 
