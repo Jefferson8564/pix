@@ -262,7 +262,8 @@
                 <span class="prefix">📱 819</span>
                 <input id="userPhone" class="field-input" type="tel" inputmode="numeric"
                     placeholder="9XXXX-XXXX" maxlength="10"
-                    onkeydown="if(event.key==='Enter')auth()">
+                    onkeydown="if(event.key==='Enter')auth()"
+                    onblur="auth()">
             </div>
 
             <div id="nameBox">
@@ -272,7 +273,7 @@
                     onkeydown="if(event.key==='Enter')auth()">
             </div>
 
-            <button id="btnLogin" class="btn-entrar" onclick="auth()">
+            <button id="btnLogin" class="btn-entrar" onclick="auth()" style="display:none;">
                 🚀 Entrar e Confirmar
             </button>
         </div>
@@ -286,7 +287,7 @@
         <div class="comp-header">
             <span class="comp-icon">💸</span>
             <div class="comp-title">Comprovante PIX</div>
-            <div class="comp-subtitle">Confirme os dados antes de registrar</div>
+            <div class="comp-subtitle" id="compSubtitle">Registrando pagamento...</div>
         </div>
 
         <!-- Info do cliente -->
@@ -314,9 +315,7 @@
             </div>
         </div>
 
-        <button id="btnConfirmar" class="btn-confirmar" onclick="confirmarPagamento()">
-            ✅ Confirmar Pagamento
-        </button>
+        <div id="compStatus" class="comp-subtitle" style="margin-top:16px;font-size:15px;font-weight:700;color:rgba(255,255,255,0.4);">Registrando pagamento...</div>
     </div>
 </div>
 
@@ -431,21 +430,24 @@ function preencherComprovante() {
     document.getElementById('compDestino').textContent  = pixDados.destino;
 
     // Verifica se esse PIX já foi registrado
+    const status = document.getElementById('compStatus');
     if (pixJaRegistrado()) {
-        const btn = document.getElementById('btnConfirmar');
-        btn.disabled = true;
-        btn.textContent = '✅ Pix já registrado';
-        btn.style.background = 'linear-gradient(135deg, #128a3e, #1aad52)';
+        status.textContent = '✅ Pix já registrado';
+        status.style.color = '#25d366';
+    } else {
+        status.textContent = 'Registrando pagamento...';
+        status.style.color = 'rgba(255,255,255,0.4)';
     }
 }
 
 // ── CONFIRMAR PAGAMENTO ───────────────────────────────────────
 async function confirmarPagamento() {
     if (!pixDados || !user) return;
+    if (pixJaRegistrado()) return;
 
-    const btn = document.getElementById('btnConfirmar');
-    btn.disabled = true;
-    btn.textContent = 'Registrando...';
+    const status = document.getElementById('compStatus');
+    status.textContent = 'Registrando...';
+    status.style.color = 'rgba(255,255,255,0.4)';
 
     try {
         // Busca debt atual (fresco do banco)
@@ -475,14 +477,21 @@ async function confirmarPagamento() {
         // Marca esse PIX como já registrado
         marcarPixRegistrado();
 
-        btn.textContent = '✅ Pagamento Registrado!';
-        btn.style.background = 'linear-gradient(135deg, #128a3e, #1aad52)';
+        status.textContent = '✅ Pagamento Registrado!';
+        status.style.color = '#25d366';
+
+        // Atualiza dívida exibida
+        const debtFmt = novoDebt > 0
+            ? `R$ ${novoDebt.toFixed(2).replace('.',',')}`
+            : novoDebt < 0
+                ? `- R$ ${Math.abs(novoDebt).toFixed(2).replace('.',',')} (crédito)`
+                : 'R$ 0,00';
+        document.getElementById('clienteDebt').textContent = debtFmt;
 
     } catch(err) {
         console.error('Erro ao registrar pagamento:', err);
-        btn.disabled  = false;
-        btn.textContent = '✅ Confirmar Pagamento';
-        alert('Erro ao registrar. Verifique sua internet e tente de novo.');
+        status.textContent = '❌ Erro ao registrar. Tente recarregar.';
+        status.style.color = '#ff6b6b';
     }
 }
 
@@ -541,11 +550,10 @@ async function auth() {
         localStorage.setItem('salgados_phone', phone);
         localStorage.setItem('salgados_user',  JSON.stringify(user));
 
-        btn.disabled = false; btn.textContent = '🚀 Entrar e Confirmar';
-
-        // Preenche e exibe comprovante
+        // Preenche, exibe comprovante e registra automaticamente
         preencherComprovante();
         mostrar('telaComprovante');
+        if (!pixJaRegistrado()) confirmarPagamento();
 
     } catch(e) {
         console.error('Auth error:', e);
@@ -578,6 +586,7 @@ window.onload = async () => {
                 clearTimeout(guard);
                 preencherComprovante();
                 mostrar('telaComprovante');
+                if (!pixJaRegistrado()) confirmarPagamento();
                 return;
             }
         } catch(e) {
@@ -587,6 +596,7 @@ window.onload = async () => {
                 clearTimeout(guard);
                 preencherComprovante();
                 mostrar('telaComprovante');
+                if (!pixJaRegistrado()) confirmarPagamento();
                 return;
             }
         }
