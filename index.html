@@ -405,22 +405,43 @@ function loginErro(msg) {
 }
 
 // ── PREENCHER COMPROVANTE ─────────────────────────────────────
-function chavePixRegistrado() {
-    if (!pixDados) return null;
-    return `salgados_pix_${pixDados.valor}_${pixDados.data}_${pixDados.hora}`;
+// Retorna: null (não registrado) | { meu: true } (eu mesmo) | { meu: false, nome: "..." } (outro cliente)
+async function pixJaRegistrado() {
+    if (!pixDados || !user) return null;
+    const { data, error } = await sb
+        .from('pagamentos_pix')
+        .select('phone')
+        .eq('valor', pixDados.valorNum)
+        .eq('data_pix', pixDados.data)
+        .eq('hora_pix', pixDados.hora)
+        .maybeSingle();
+    if (error) { console.error('Erro ao checar Pix:', error); return null; }
+    if (!data) return null;
+    if (data.phone === user.phone) return { meu: true };
+
+    // Busca o nome do outro cliente
+    const { data: outro } = await sb
+        .from('clientes')
+        .select('name')
+        .eq('phone', data.phone)
+        .maybeSingle();
+    return { meu: false, nome: outro?.name || 'outro cliente' };
 }
 
-function pixJaRegistrado() {
-    const chave = chavePixRegistrado();
-    return chave ? localStorage.getItem(chave) === '1' : false;
+async function marcarPixRegistrado() {
+    if (!pixDados || !user) return;
+    const { error } = await sb.from('pagamentos_pix').insert({
+        phone:    user.phone,
+        valor:    pixDados.valorNum,
+        data_pix: pixDados.data,
+        hora_pix: pixDados.hora,
+        destino:  pixDados.destino,
+        adm:      false
+    });
+    if (error) console.error('Erro ao salvar Pix:', error);
 }
 
-function marcarPixRegistrado() {
-    const chave = chavePixRegistrado();
-    if (chave) localStorage.setItem(chave, '1');
-}
-
-function preencherComprovante() {
+async function preencherComprovante() {
     if (!pixDados || !user) return;
 
     // Avatar (inicial do nome)
@@ -441,9 +462,12 @@ function preencherComprovante() {
 
     // Status
     const status = document.getElementById('compStatus');
-    if (pixJaRegistrado()) {
+    const reg = await pixJaRegistrado();
+    if (reg) {
         status.className   = 'comp-status duplicado';
-        status.textContent = '❌ Pagamento já registrado ❌';
+        status.textContent = reg.meu
+            ? '❌ Pagamento já registrado ❌'
+            : `❌ Pagamento já registrado por ${reg.nome} ❌`;
     } else {
         status.className   = 'comp-status';
         status.textContent = '';
@@ -476,7 +500,8 @@ function animarDivida(deStart, deEnd) {
 // ── CONFIRMAR PAGAMENTO ───────────────────────────────────────
 async function confirmarPagamento() {
     if (!pixDados || !user) return;
-    if (pixJaRegistrado()) return;
+    const reg = await pixJaRegistrado();
+    if (reg) return;
 
     const status = document.getElementById('compStatus');
     status.className   = 'comp-status';
@@ -507,8 +532,8 @@ async function confirmarPagamento() {
         user.debt = novoDebt;
         localStorage.setItem('salgados_user', JSON.stringify(user));
 
-        // Marca esse PIX como já registrado
-        marcarPixRegistrado();
+        // Salva o PIX no Supabase
+        await marcarPixRegistrado();
 
         // Status de sucesso
         status.className   = 'comp-status sucesso';
