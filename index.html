@@ -607,7 +607,7 @@ async function auth() {
         // Preenche, exibe comprovante e registra automaticamente
         preencherComprovante();
         mostrar('telaComprovante');
-        if (!pixJaRegistrado()) confirmarPagamento();
+        if (!await pixJaRegistrado()) confirmarPagamento();
 
     } catch(e) {
         console.error('Auth error:', e);
@@ -640,7 +640,7 @@ window.onload = async () => {
                 clearTimeout(guard);
                 preencherComprovante();
                 mostrar('telaComprovante');
-                if (!pixJaRegistrado()) confirmarPagamento();
+                if (!await pixJaRegistrado()) confirmarPagamento();
                 return;
             }
         } catch(e) {
@@ -650,7 +650,7 @@ window.onload = async () => {
                 clearTimeout(guard);
                 preencherComprovante();
                 mostrar('telaComprovante');
-                if (!pixJaRegistrado()) confirmarPagamento();
+                if (!await pixJaRegistrado()) confirmarPagamento();
                 return;
             }
         }
