@@ -186,19 +186,28 @@
         .comp-cliente-box {
             background: rgba(255,255,255,0.04);
             border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px; padding: 14px 16px;
+            border-radius: 16px; padding: 16px 18px;
             margin-bottom: 16px;
-            display: flex; align-items: center; gap: 12px;
+            display: flex; align-items: center; gap: 14px;
         }
         .comp-avatar {
-            width: 40px; height: 40px; border-radius: 50%;
+            width: 44px; height: 44px; border-radius: 50%;
             background: linear-gradient(135deg, #e8732a, #c75b24);
             display: flex; align-items: center; justify-content: center;
-            font-size: 18px; font-weight: 900; color: white; flex-shrink: 0;
+            font-size: 20px; font-weight: 900; color: white; flex-shrink: 0;
         }
-        .comp-cliente-name { font-size: 14px; font-weight: 800; color: white; }
-        .comp-cliente-debt { font-size: 12px; color: rgba(255,255,255,0.45); font-weight: 500; margin-top: 2px; }
-        .comp-cliente-debt span { color: #f39c12; font-weight: 700; }
+        .comp-cliente-info { display: flex; flex-direction: column; gap: 4px; }
+        .comp-cliente-name { font-size: 18px; font-weight: 900; color: white; }
+        .comp-cliente-debt {
+            font-size: 10px; font-weight: 700;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase; letter-spacing: 1.2px;
+        }
+        .comp-cliente-debt-valor {
+            font-size: 22px; font-weight: 900;
+            color: #f39c12;
+            line-height: 1.1;
+        }
 
         .btn-confirmar {
             width: 100%; padding: 16px;
@@ -298,9 +307,10 @@
         <!-- Info do cliente — TOPO -->
         <div class="comp-cliente-box">
             <div class="comp-avatar" id="clienteAvatar">?</div>
-            <div>
+            <div class="comp-cliente-info">
                 <div class="comp-cliente-name" id="clienteNome">—</div>
-                <div class="comp-cliente-debt">Dívida atual: <span id="clienteDebt">R$ 0,00</span></div>
+                <div class="comp-cliente-debt">Dívida atual</div>
+                <div class="comp-cliente-debt-valor" id="clienteDebt">R$ 0,00</div>
             </div>
         </div>
 
@@ -314,6 +324,10 @@
             <div class="comp-row">
                 <div class="comp-row-label">Valor</div>
                 <div class="comp-row-value comp-valor-big" id="compValor">—</div>
+            </div>
+            <div class="comp-row">
+                <div class="comp-row-label">Quem enviou</div>
+                <div class="comp-row-value" id="compRemetente">—</div>
             </div>
             <div class="comp-row">
                 <div class="comp-row-label">Data e Hora</div>
@@ -456,9 +470,10 @@ async function preencherComprovante() {
     document.getElementById('clienteDebt').textContent = debtFmt;
 
     // Dados PIX
-    document.getElementById('compValor').textContent    = pixDados.valor;
-    document.getElementById('compDataHora').textContent = `${pixDados.data} às ${pixDados.hora}`;
-    document.getElementById('compDestino').textContent  = pixDados.destino;
+    document.getElementById('compValor').textContent      = pixDados.valor;
+    document.getElementById('compRemetente').textContent  = user.name;
+    document.getElementById('compDataHora').textContent   = `${pixDados.data} às ${pixDados.hora}`;
+    document.getElementById('compDestino').textContent    = pixDados.destino;
 
     // Status
     const status = document.getElementById('compStatus');
@@ -467,7 +482,7 @@ async function preencherComprovante() {
         status.className   = 'comp-status duplicado';
         status.textContent = reg.meu
             ? '❌ Pagamento já registrado ❌'
-            : `❌ Pagamento já registrado por ${reg.nome} ❌`;
+            : '❌ Pagamento já registrado ❌';
     } else {
         status.className   = 'comp-status';
         status.textContent = '';
