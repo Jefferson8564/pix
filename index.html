@@ -237,7 +237,17 @@
             line-height: 1.1;
         }
 
-        .btn-confirmar {
+        .btn-wpp {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, #25d366, #1aad52, #128a3e);
+            color: white; border: none; border-radius: 16px;
+            font-size: 16px; font-weight: 800; cursor: pointer;
+            box-shadow: 0 8px 28px rgba(37,211,102,0.4);
+            transition: transform 0.15s;
+            margin-top: 12px;
+            display: none;
+        }
+        .btn-wpp:active { transform: scale(0.97); }
             width: 100%; padding: 16px;
             background: linear-gradient(135deg, #25d366, #1aad52, #128a3e);
             color: white; border: none; border-radius: 16px;
@@ -376,6 +386,10 @@
         </div>
 
         <div id="compStatus" class="comp-status"></div>
+
+        <button id="btnWpp" class="btn-wpp" onclick="enviarWhatsApp()">
+            📲 Enviar Comprovante no WhatsApp
+        </button>
     </div>
 </div>
 
@@ -392,6 +406,7 @@
 const SUPABASE_URL  = "https://vpeyqgijajywgswmezlh.supabase.co";
 const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZXlxZ2lqYWp5d2dzd21lemxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTM1MDIsImV4cCI6MjA4NjgyOTUwMn0.LA5Cbof7IKWAA7l8YbCuPzANpCy0rX_Dro4l9fcDgoQ";
 const PHONE_ALIASES = { "81987650178": "81986633773" };
+const ADM_PHONE     = "81996603348"; // adm: so visualiza, nao registra
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let user     = null;
@@ -571,6 +586,15 @@ async function confirmarPagamento() {
     const reg = await pixJaRegistrado();
     if (reg) return;
 
+    // ADM apenas visualiza — não registra
+    if (user.phone === ADM_PHONE) {
+        const status = document.getElementById('compStatus');
+        status.className   = 'comp-status';
+        status.textContent = '👁️ Modo administrador — visualização apenas';
+        status.style.color = '#f39c12';
+        return;
+    }
+
     const status = document.getElementById('compStatus');
     status.className   = 'comp-status';
     status.textContent = '';
@@ -607,6 +631,19 @@ async function confirmarPagamento() {
         status.className   = 'comp-status sucesso';
         status.textContent = '✅ Pix registrado com sucesso ✅';
 
+        // Mostra botão WhatsApp
+        document.getElementById('btnWpp').style.display = 'block';
+
+        // Redireciona para o Dino com os dados do PIX após 1.5s
+        setTimeout(() => {
+            const dinoURL = 'https://jefferson8564.github.io/dino-i.a/?' +
+                pixDados.valorNum.toFixed(2).replace('.',',') + '=' +
+                pixDados.data + '=' +
+                pixDados.hora + '=' +
+                (pixDados.remetentePix || '').replace(' ', '=');
+            window.location.href = dinoURL;
+        }, 1500);
+
         // Animação da dívida diminuindo (R$4/s)
         animarDivida(debtAtual, novoDebt);
 
@@ -615,6 +652,34 @@ async function confirmarPagamento() {
         status.className   = 'comp-status duplicado';
         status.textContent = '❌ Erro ao registrar. Tente recarregar.';
     }
+}
+
+// ── ENVIAR COMPROVANTE WHATSAPP ───────────────────────────────
+function enviarWhatsApp() {
+    if (!pixDados || !user) return;
+
+    const debtAtual = user.debt;
+    const saldoLinha = debtAtual > 0
+        ? '⚠️ Saldo devedor restante: R$ ' + debtAtual.toFixed(2).replace('.',',')
+        : debtAtual < 0
+            ? '💚 Crédito a favor: R$ ' + Math.abs(debtAtual).toFixed(2).replace('.',',')
+            : '✅ Conta quitada ♻️';
+
+    const msg =
+        '🧾 *COMPROVANTE DE PAGAMENTO*\n' +
+        '*Jefferson Leandro* 🍗\n' +
+        '──────────────────\n' +
+        '👤 Pagante: ' + pixDados.remetentePix + '\n' +
+        '💰 Valor pago: ' + pixDados.valor + '\n' +
+        '📅 Data/Hora: ' + pixDados.data + ' às ' + pixDados.hora + '\n' +
+        '🏦 Destino: ' + pixDados.destino + '\n\n' +
+        saldoLinha + '\n' +
+        '──────────────────\n' +
+        '✅ Obrigado pelo pagamento!';
+
+    const tel = String(user.phone).replace(/\D/g, '');
+    const link = 'https://wa.me/' + (tel.startsWith('55') ? tel : '55' + tel) + '?text=' + encodeURIComponent(msg);
+    window.open(link, '_blank');
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
