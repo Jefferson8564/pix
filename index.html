@@ -347,6 +347,9 @@
             <div class="user-header-debt-label">Sua dívida</div>
             <div class="user-header-debt-valor" id="headerDebt">R$ 0,00</div>
         </div>
+        <button id="btnDinoHeader" onclick="irParaDino()" style="display:none;background:#c75b24;border:none;border-radius:12px;padding:8px 14px;color:white;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;">
+            👽 Dino
+        </button>
     </div>
 
     <div class="orb orb1" style="background:radial-gradient(circle,rgba(37,211,102,0.2) 0%,transparent 70%);"></div>
@@ -389,6 +392,9 @@
 
         <button id="btnWpp" class="btn-wpp" onclick="enviarWhatsApp()">
             📲 Enviar Comprovante no WhatsApp
+        </button>
+        <button id="btnDino" class="btn-wpp" style="display:none;background:#c75b24;" onclick="irParaDino()">
+            🦕 Encaminhar para o Dino
         </button>
     </div>
 </div>
@@ -580,18 +586,25 @@ function animarDivida(deStart, deEnd) {
     }, 10);
 }
 
+// ── IR PARA O DINO ────────────────────────────────────────────
+function irParaDino() {
+    const dinoURL = 'https://jefferson8564.github.io/dino-i.a/?' +
+        pixDados.valorNum.toFixed(2).replace('.',',') + '=' +
+        pixDados.data + '=' +
+        pixDados.hora + '=' +
+        (pixDados.remetentePix || '').replace(' ', '=');
+    window.location.href = dinoURL;
+}
+
 // ── CONFIRMAR PAGAMENTO ───────────────────────────────────────
 async function confirmarPagamento() {
     if (!pixDados || !user) return;
     const reg = await pixJaRegistrado();
     if (reg) return;
 
-    // ADM apenas visualiza — não registra
+    // ADM não registra — mostra botão no cabeçalho pra ir pro Dino
     if (user.phone === ADM_PHONE) {
-        const status = document.getElementById('compStatus');
-        status.className   = 'comp-status';
-        status.textContent = '👁️ Modo administrador — visualização apenas';
-        status.style.color = '#f39c12';
+        document.getElementById('btnDinoHeader').style.display = 'block';
         return;
     }
 
