@@ -138,6 +138,34 @@
         .btn-entrar:active { transform: scale(0.97); }
         .btn-entrar:disabled { opacity: 0.65; cursor: not-allowed; }
 
+        /* ── CABEÇALHO DO USUÁRIO LOGADO ── */
+        .user-header {
+            position: fixed; top: 0; left: 0; right: 0;
+            z-index: 20;
+            background: rgba(13,5,8,0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 12px 20px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .user-header-avatar {
+            width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+            background: linear-gradient(135deg, #e8732a, #c75b24);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px; font-weight: 900; color: white;
+        }
+        .user-header-info { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+        .user-header-name { font-size: 14px; font-weight: 800; color: white; }
+        .user-header-debt-label {
+            font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.35);
+            text-transform: uppercase; letter-spacing: 1.2px;
+        }
+        .user-header-debt-valor { font-size: 13px; font-weight: 800; color: #f39c12; }
+
+        /* Empurra o card para baixo para não ficar atrás do header */
+        #telaComprovante { padding-top: 80px; }
+
         /* ── COMPROVANTE ── */
         #telaComprovante {
             background: #0d0508;
@@ -301,6 +329,16 @@
 
 <!-- ── COMPROVANTE ── -->
 <div id="telaComprovante" class="tela oculta">
+    <!-- Cabeçalho fixo com nome e dívida do usuário logado -->
+    <div class="user-header" id="userHeader">
+        <div class="user-header-avatar" id="headerAvatar">?</div>
+        <div class="user-header-info">
+            <div class="user-header-name" id="headerNome">—</div>
+            <div class="user-header-debt-label">Sua dívida</div>
+            <div class="user-header-debt-valor" id="headerDebt">R$ 0,00</div>
+        </div>
+    </div>
+
     <div class="orb orb1" style="background:radial-gradient(circle,rgba(37,211,102,0.2) 0%,transparent 70%);"></div>
     <div class="comp-card">
 
@@ -309,8 +347,6 @@
             <div class="comp-avatar" id="clienteAvatar">?</div>
             <div class="comp-cliente-info">
                 <div class="comp-cliente-name" id="clienteNome">—</div>
-                <div class="comp-cliente-debt">Dívida atual</div>
-                <div class="comp-cliente-debt-valor" id="clienteDebt">R$ 0,00</div>
             </div>
         </div>
 
@@ -362,7 +398,8 @@ let user     = null;
 let pixDados = null; // { valor, valorNum, data, hora, destino, plataforma }
 
 // ── PARSE URL PIX ────────────────────────────────────────────
-// Formato: ?R$20,00=16/04/2026=09:54:34=JeffersonLeandro=PicPay
+// Formato: ?39,90=18/04/26=12:58=Anderson=Gomes
+// Destino fixo: Jefferson Leandro (via picpay)
 function parsearURLPix() {
     const search = decodeURIComponent(window.location.search);
     if (!search) return null;
@@ -371,33 +408,42 @@ function parsearURLPix() {
     const raw = search.substring(1);
     const partes = raw.split('=');
 
-    if (partes.length < 4) return null;
+    // Exige exatamente 5 partes: valor=data=hora=nome=sobrenome
+    if (partes.length !== 5) return null;
 
-    const valorRaw    = partes[0]; // ex: "R$20,00"
-    const data        = partes[1]; // ex: "16/04/2026"
-    const hora        = partes[2]; // ex: "09:54:34"
-    const nomeRaw     = partes[3]; // ex: "JeffersonLeandro"
-    const plataforma  = partes[4] || ''; // ex: "PicPay"
+    const valorRaw  = partes[0]; // ex: "39,90"
+    const data      = partes[1]; // ex: "18/04/26"
+    const hora      = partes[2]; // ex: "12:58"
+    const nome      = partes[3]; // ex: "Anderson"
+    const sobrenome = partes[4]; // ex: "Gomes"
 
-    // Parseia valor: "R$20,00" → 20.00
+    // Formato antigo com R$ e/ou plataforma no final: rejeitado
+    if (valorRaw.includes('R$')) return null;
+    // Nome e sobrenome obrigatorios
+    if (!nome.trim() || !sobrenome.trim()) return null;
+
+    // Parseia valor: "39,90" -> 39.90
     const valorNum = parseFloat(
-        valorRaw.replace('R$','').replace(/\./g,'').replace(',','.')
+        valorRaw.replace(/\./g,'').replace(',','.')
     );
     if (isNaN(valorNum) || valorNum <= 0) return null;
 
-    // Formata nome (CamelCase → "Jefferson Leandro")
-    const nomeFormatado = nomeRaw.replace(/([a-z])([A-Z])/g, '$1 $2');
+    // Nome completo de quem enviou
+    const remetentePix = [nome, sobrenome].filter(Boolean).join(' ');
 
-    const destino = plataforma
-        ? `${nomeFormatado} (via ${plataforma})`
-        : nomeFormatado;
+    // Destino FIXO
+    const destino = 'Jefferson Leandro (via picpay)';
+
+    // Formata valor para exibição
+    const valorFmt = `R$ ${valorNum.toFixed(2).replace('.',',')}`;
 
     return {
-        valor:      valorRaw.startsWith('R$') ? valorRaw : `R$ ${valorRaw}`,
+        valor:         valorFmt,
         valorNum,
         data,
         hora,
-        destino
+        destino,
+        remetentePix   // nome de quem enviou o Pix (da URL)
     };
 }
 
@@ -445,12 +491,13 @@ async function pixJaRegistrado() {
 async function marcarPixRegistrado() {
     if (!pixDados || !user) return;
     const { error } = await sb.from('pagamentos_pix').insert({
-        phone:    user.phone,
-        valor:    pixDados.valorNum,
-        data_pix: pixDados.data,
-        hora_pix: pixDados.hora,
-        destino:  pixDados.destino,
-        adm:      false
+        phone:          user.phone,
+        valor:          pixDados.valorNum,
+        data_pix:       pixDados.data,
+        hora_pix:       pixDados.hora,
+        destino:        pixDados.destino,
+        remetente_pix:  pixDados.remetentePix,   // nome de quem enviou (da URL)
+        adm:            false
     });
     if (error) console.error('Erro ao salvar Pix:', error);
 }
@@ -458,20 +505,23 @@ async function marcarPixRegistrado() {
 async function preencherComprovante() {
     if (!pixDados || !user) return;
 
-    // Avatar (inicial do nome)
-    document.getElementById('clienteAvatar').textContent = user.name.charAt(0).toUpperCase();
-    document.getElementById('clienteNome').textContent   = user.name;
-
+    // Cabeçalho fixo — usuário logado (nome + dívida)
+    document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
+    document.getElementById('headerNome').textContent   = user.name;
     const debtFmt = user.debt > 0
         ? `R$ ${user.debt.toFixed(2).replace('.',',')}`
         : user.debt < 0
             ? `- R$ ${Math.abs(user.debt).toFixed(2).replace('.',',')} (crédito)`
             : 'R$ 0,00';
-    document.getElementById('clienteDebt').textContent = debtFmt;
+    document.getElementById('headerDebt').textContent = debtFmt;
+
+    // Avatar (inicial do nome)
+    document.getElementById('clienteAvatar').textContent = user.name.charAt(0).toUpperCase();
+    document.getElementById('clienteNome').textContent   = user.name;
 
     // Dados PIX
     document.getElementById('compValor').textContent      = pixDados.valor;
-    document.getElementById('compRemetente').textContent  = user.name;
+    document.getElementById('compRemetente').textContent  = pixDados.remetentePix || user.name;
     document.getElementById('compDataHora').textContent   = `${pixDados.data} às ${pixDados.hora}`;
     document.getElementById('compDestino').textContent    = pixDados.destino;
 
@@ -504,11 +554,14 @@ function animarDivida(deStart, deEnd) {
             clearInterval(intervalo);
         }
         const val = centAtual / 100;
-        el.textContent = val > 0
+        const fmt = val > 0
             ? `R$ ${val.toFixed(2).replace('.',',')}`
             : val < 0
                 ? `- R$ ${Math.abs(val).toFixed(2).replace('.',',')} (crédito)`
                 : 'R$ 0,00';
+        el.textContent = fmt;
+        const hd = document.getElementById('headerDebt');
+        if (hd) hd.textContent = fmt;
     }, 10);
 }
 
