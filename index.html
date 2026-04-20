@@ -248,14 +248,6 @@
             display: none;
         }
         .btn-wpp:active { transform: scale(0.97); }
-            width: 100%; padding: 16px;
-            background: linear-gradient(135deg, #25d366, #1aad52, #128a3e);
-            color: white; border: none; border-radius: 16px;
-            font-size: 16px; font-weight: 800; cursor: pointer;
-            box-shadow: 0 8px 28px rgba(37,211,102,0.4);
-            transition: transform 0.15s;
-            position: relative; overflow: hidden;
-        }
         .btn-confirmar::before {
             content: ''; position: absolute; inset: 0;
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
@@ -319,8 +311,7 @@
                 <span class="prefix">📱 819</span>
                 <input id="userPhone" class="field-input" type="tel" inputmode="numeric"
                     placeholder="9XXXX-XXXX" maxlength="10"
-                    onkeydown="if(event.key==='Enter')auth()"
-                    onblur="auth()">
+                    onkeydown="if(event.key==='Enter')auth()">
             </div>
 
             <div id="nameBox">
@@ -330,7 +321,7 @@
                     onkeydown="if(event.key==='Enter')auth()">
             </div>
 
-            <button id="btnLogin" class="btn-entrar" onclick="auth()" style="display:none;">
+            <button id="btnLogin" class="btn-entrar" onclick="auth()">
                 🚀 Entrar e Confirmar
             </button>
         </div>
@@ -385,19 +376,6 @@
             </div>
         </div>
 
-        <!-- Seletor de cliente — só aparece para o ADM quando PIX ainda não registrado -->
-        <div id="admSeletor" style="display:none; margin-bottom:12px;">
-            <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;">Descontar de qual cliente?</div>
-            <select id="admClienteSelect"
-                style="width:100%;padding:14px 16px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,150,50,0.5);border-radius:14px;font-size:15px;font-weight:600;color:white;outline:none;-webkit-appearance:none;appearance:none;">
-                <option value="">— Selecione o cliente —</option>
-            </select>
-            <button onclick="admRegistrarPagamento()"
-                style="width:100%;margin-top:10px;padding:15px;background:linear-gradient(135deg,#e8732a,#c75b24);color:white;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;">
-                ✅ Registrar e Descontar
-            </button>
-        </div>
-
         <div id="compStatus" class="comp-status"></div>
 
         <button id="btnWpp" class="btn-wpp" onclick="enviarWhatsApp()">
@@ -423,9 +401,7 @@ const ADM_PHONE     = "81996603348"; // adm: so visualiza, nao registra
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let user     = null;
-let pixDados = null;
-let phoneDescontado = null; // phone do cliente que foi descontado (usado pelo ADM)
-let debtDescontado  = null; // debt atualizado do cliente descontado pelo ADM // { valor, valorNum, data, hora, destino, plataforma }
+let pixDados = null; // { valor, valorNum, data, hora, destino, plataforma }
 
 // ── PARSE URL PIX ────────────────────────────────────────────
 // Formato: ?39,90=18/04/26=12:58=Anderson=Gomes
@@ -497,7 +473,7 @@ function loginErro(msg) {
 // ── PREENCHER COMPROVANTE ─────────────────────────────────────
 // Retorna: null (não registrado) | { meu: true } (eu mesmo) | { meu: false, nome: "..." } (outro cliente)
 async function pixJaRegistrado() {
-    if (!pixDados || !user) return true; // em caso de dúvida, bloqueia
+    if (!pixDados || !user) return null;
     const { data, error } = await sb
         .from('pagamentos_pix')
         .select('phone')
@@ -505,8 +481,17 @@ async function pixJaRegistrado() {
         .eq('data_pix', pixDados.data)
         .eq('hora_pix', pixDados.hora)
         .maybeSingle();
-    if (error) { console.error('Erro ao checar Pix:', error); return true; } // em caso de erro, bloqueia
-    return !!data; // true = já registrado, false = pode registrar
+    if (error) { console.error('Erro ao checar Pix:', error); return null; }
+    if (!data) return null;
+    if (data.phone === user.phone) return { meu: true };
+
+    // Busca o nome do outro cliente
+    const { data: outro } = await sb
+        .from('clientes')
+        .select('name')
+        .eq('phone', data.phone)
+        .maybeSingle();
+    return { meu: false, nome: outro?.name || 'outro cliente' };
 }
 
 async function marcarPixRegistrado() {
@@ -523,10 +508,10 @@ async function marcarPixRegistrado() {
     if (error) console.error('Erro ao salvar Pix:', error);
 }
 
-async function preencherComprovante() {
+async function preencherComprovante(reg) {
     if (!pixDados || !user) return;
 
-    // Cabeçalho fixo — sempre o usuário logado
+    // Cabeçalho fixo — usuário logado (nome + dívida)
     document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
     document.getElementById('headerNome').textContent   = user.name;
     const debtFmt = user.debt > 0
@@ -536,61 +521,33 @@ async function preencherComprovante() {
             : 'R$ 0,00';
     document.getElementById('headerDebt').textContent = debtFmt;
 
+    // Avatar (inicial do nome)
+    document.getElementById('clienteAvatar').textContent = user.name.charAt(0).toUpperCase();
+    document.getElementById('clienteNome').textContent   = user.name;
+
     // Dados PIX
     document.getElementById('compValor').textContent      = pixDados.valor;
     document.getElementById('compRemetente').textContent  = pixDados.remetentePix || user.name;
     document.getElementById('compDataHora').textContent   = `${pixDados.data} às ${pixDados.hora}`;
     document.getElementById('compDestino').textContent    = pixDados.destino;
 
-    // Caixinha do nome — mostra quem foi descontado (se já registrado no banco)
-    const { data: pixReg } = await sb
-        .from('pagamentos_pix')
-        .select('phone')
-        .eq('valor', pixDados.valorNum)
-        .eq('data_pix', pixDados.data)
-        .eq('hora_pix', pixDados.hora)
-        .maybeSingle();
-
-    if (pixReg) {
-        // PIX já registrado — busca o nome do dono
-        const { data: dono } = await sb
-            .from('clientes')
-            .select('name, debt')
-            .eq('phone', pixReg.phone)
-            .maybeSingle();
-
-        const nomeDono = dono?.name || '?';
-        document.getElementById('clienteAvatar').textContent = nomeDono.charAt(0).toUpperCase();
-        document.getElementById('clienteNome').textContent   = nomeDono;
-
-        // Guarda para o WhatsApp
-        phoneDescontado = pixReg.phone;
-        debtDescontado  = dono?.debt ?? null;
-
-        // Status — só muda se ainda não tiver mensagem de sucesso
-        const status = document.getElementById('compStatus');
-        if (!status.classList.contains('sucesso')) {
-            status.className   = 'comp-status duplicado';
-            status.textContent = '❌ Já registrado ❌';
-        }
+    // Status — usa o resultado já calculado (evita segunda consulta ao banco)
+    const status = document.getElementById('compStatus');
+    if (reg) {
+        status.className   = 'comp-status duplicado';
+        status.textContent = reg.meu
+            ? '❌ Pagamento já registrado ❌'
+            : `❌ Pagamento já registrado por ${reg.nome} ❌`;
     } else {
-        // PIX ainda não registrado
-        if (user.phone === ADM_PHONE) {
-            // ADM: caixinha fica em branco até selecionar
-            document.getElementById('clienteAvatar').textContent = '?';
-            document.getElementById('clienteNome').textContent   = '— aguardando seleção —';
-        } else {
-            // Cliente normal: mostra o próprio nome (será descontado dele)
-            document.getElementById('clienteAvatar').textContent = user.name.charAt(0).toUpperCase();
-            document.getElementById('clienteNome').textContent   = user.name;
-        }
+        status.className   = 'comp-status';
+        status.textContent = '';
     }
 }
 
 // ── ANIMAÇÃO DA DÍVIDA ────────────────────────────────────────
 // Velocidade: R$4/s → 400 centavos/s → 4 centavos a cada 10ms
 function animarDivida(deStart, deEnd) {
-    const el = document.getElementById('clienteDebt');
+    const el = document.getElementById('headerDebt');
     let centAtual = Math.round(deStart * 100);
     const centFinal = Math.round(deEnd * 100);
     if (centAtual <= centFinal) return; // nada a animar
@@ -608,8 +565,6 @@ function animarDivida(deStart, deEnd) {
                 ? `- R$ ${Math.abs(val).toFixed(2).replace('.',',')} (crédito)`
                 : 'R$ 0,00';
         el.textContent = fmt;
-        const hd = document.getElementById('headerDebt');
-        if (hd) hd.textContent = fmt;
     }, 10);
 }
 
@@ -619,9 +574,12 @@ async function confirmarPagamento() {
     const reg = await pixJaRegistrado();
     if (reg) return;
 
-    // ADM — mostra seletor de cliente para escolher em quem descontar
+    // ADM apenas visualiza — não registra
     if (user.phone === ADM_PHONE) {
-        await admMostrarSeletor();
+        const status = document.getElementById('compStatus');
+        status.className   = 'comp-status';
+        status.textContent = '👁️ Modo administrador — visualização apenas';
+        status.style.color = '#f39c12';
         return;
     }
 
@@ -630,7 +588,10 @@ async function confirmarPagamento() {
     status.textContent = '';
 
     try {
-        // Busca debt atual (fresco do banco)
+        // 1. Registra o PIX PRIMEIRO — evita race condition de duplo abate
+        await marcarPixRegistrado();
+
+        // 2. Busca debt atual (fresco do banco)
         const { data: clienteAtual, error: errBusca } = await sb
             .from('clientes')
             .select('debt')
@@ -642,7 +603,7 @@ async function confirmarPagamento() {
         const debtAtual  = Number(clienteAtual.debt) || 0;
         const novoDebt   = debtAtual - pixDados.valorNum;
 
-        // Atualiza debt
+        // 3. Atualiza debt
         const { error: errUpdate } = await sb
             .from('clientes')
             .update({ debt: novoDebt })
@@ -654,18 +615,23 @@ async function confirmarPagamento() {
         user.debt = novoDebt;
         localStorage.setItem('salgados_user', JSON.stringify(user));
 
-        // Salva o PIX no Supabase
-        await marcarPixRegistrado();
-
-        // Atualiza caixinha com o nome do cliente que foi descontado
-        document.getElementById('clienteAvatar').textContent = user.name.charAt(0).toUpperCase();
-        document.getElementById('clienteNome').textContent   = user.name;
-        phoneDescontado = user.phone;
-        debtDescontado  = novoDebt;
-
         // Status de sucesso
         status.className   = 'comp-status sucesso';
         status.textContent = '✅ Pix registrado com sucesso ✅';
+
+        // Mostra botão WhatsApp
+        document.getElementById('btnWpp').style.display = 'block';
+
+        // Redireciona para o Dino com os dados do PIX após 1.5s
+        // Fix: replace com /g para substituir TODOS os espaços no nome
+        setTimeout(() => {
+            const dinoURL = 'https://jefferson8564.github.io/dino-i.a/?' +
+                pixDados.valorNum.toFixed(2).replace('.',',') + '=' +
+                pixDados.data + '=' +
+                pixDados.hora + '=' +
+                (pixDados.remetentePix || '').replace(/ /g, '=');
+            window.location.href = dinoURL;
+        }, 1500);
 
         // Animação da dívida diminuindo (R$4/s)
         animarDivida(debtAtual, novoDebt);
@@ -677,103 +643,11 @@ async function confirmarPagamento() {
     }
 }
 
-// ── ADM: SELETOR DE CLIENTE ──────────────────────────────────
-async function admMostrarSeletor() {
-    // Busca todos os clientes
-    const { data: clientes } = await sb
-        .from('clientes')
-        .select('name, phone')
-        .order('name');
-
-    const select = document.getElementById('admClienteSelect');
-    select.innerHTML = '<option value="">— Selecione o cliente —</option>';
-    (clientes || []).forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.phone;
-        opt.textContent = c.name;
-        select.appendChild(opt);
-    });
-
-    // Atualiza nome/avatar quando selecionar
-    select.onchange = () => {
-        const nome = select.options[select.selectedIndex].text;
-        if (select.value) {
-            document.getElementById('clienteAvatar').textContent = nome.charAt(0).toUpperCase();
-            document.getElementById('clienteNome').textContent   = nome;
-        }
-    };
-
-    document.getElementById('admSeletor').style.display = 'block';
-
-    const status = document.getElementById('compStatus');
-    status.className   = 'comp-status';
-    status.textContent = '👁️ Modo administrador — escolha o cliente';
-    status.style.color = '#f39c12';
-}
-
-async function admRegistrarPagamento() {
-    const select = document.getElementById('admClienteSelect');
-    const phone  = select.value;
-    const nome   = select.options[select.selectedIndex].text;
-    if (!phone) { alert('Selecione um cliente!'); return; }
-
-    const status = document.getElementById('compStatus');
-    status.textContent = 'Registrando...';
-    status.style.color = 'white';
-
-    try {
-        // Busca debt atual do cliente selecionado
-        const { data: cliente } = await sb
-            .from('clientes')
-            .select('debt')
-            .eq('phone', phone)
-            .maybeSingle();
-
-        if (!cliente) throw new Error('Cliente não encontrado');
-
-        const debtAtual = Number(cliente.debt) || 0;
-        const novoDebt  = debtAtual - pixDados.valorNum;
-
-        // Atualiza debt
-        await sb.from('clientes').update({ debt: novoDebt }).eq('phone', phone);
-
-        // Salva o PIX com o phone do cliente escolhido
-        await sb.from('pagamentos_pix').insert({
-            phone:         phone,
-            valor:         pixDados.valorNum,
-            data_pix:      pixDados.data,
-            hora_pix:      pixDados.hora,
-            destino:       pixDados.destino,
-            remetente_pix: pixDados.remetentePix,
-            adm:           true
-        });
-
-        // Atualiza UI
-        phoneDescontado = phone; // guarda para o WhatsApp ir para o cliente certo
-        debtDescontado  = novoDebt;
-        document.getElementById('admSeletor').style.display = 'none';
-        document.getElementById('clienteAvatar').textContent = nome.charAt(0).toUpperCase();
-        document.getElementById('clienteNome').textContent   = nome;
-
-        status.className   = 'comp-status sucesso';
-        status.textContent = '✅ Registrado em nome de ' + nome + ' ✅';
-        status.style.color = '';
-
-        document.getElementById('btnWpp').style.display = 'block';
-
-    } catch(err) {
-        console.error(err);
-        status.textContent = '❌ Erro ao registrar. Tente novamente.';
-        status.style.color = '#e74c3c';
-    }
-}
-
 // ── ENVIAR COMPROVANTE WHATSAPP ───────────────────────────────
 function enviarWhatsApp() {
     if (!pixDados || !user) return;
 
-    // Se ADM registrou, usa o debt do cliente descontado; senão, o próprio user.debt
-    const debtAtual = (user.phone === ADM_PHONE && debtDescontado !== null) ? debtDescontado : user.debt;
+    const debtAtual = user.debt;
     const saldoLinha = debtAtual > 0
         ? '⚠️ Saldo devedor restante: R$ ' + debtAtual.toFixed(2).replace('.',',')
         : debtAtual < 0
@@ -792,9 +666,7 @@ function enviarWhatsApp() {
         '──────────────────\n' +
         '✅ Obrigado pelo pagamento!';
 
-    // Se ADM registrou, envia para o cliente descontado; senão, para o próprio usuário
-    const telDestino = (user.phone === ADM_PHONE && phoneDescontado) ? phoneDescontado : user.phone;
-    const tel = String(telDestino).replace(/\D/g, '');
+    const tel = String(user.phone).replace(/\D/g, '');
     const link = 'https://wa.me/' + (tel.startsWith('55') ? tel : '55' + tel) + '?text=' + encodeURIComponent(msg);
     window.open(link, '_blank');
 }
@@ -855,9 +727,11 @@ async function auth() {
         localStorage.setItem('salgados_user',  JSON.stringify(user));
 
         // Preenche, exibe comprovante e registra automaticamente
+        // Uma única consulta ao banco — resultado compartilhado
+        const reg = await pixJaRegistrado();
+        preencherComprovante(reg);
         mostrar('telaComprovante');
-        if (!await pixJaRegistrado()) await confirmarPagamento();
-        await preencherComprovante();
+        if (!reg) confirmarPagamento();
 
     } catch(e) {
         console.error('Auth error:', e);
@@ -888,9 +762,10 @@ window.onload = async () => {
                 };
                 localStorage.setItem('salgados_user', JSON.stringify(user));
                 clearTimeout(guard);
+                const reg1 = await pixJaRegistrado();
+                preencherComprovante(reg1);
                 mostrar('telaComprovante');
-                if (!await pixJaRegistrado()) await confirmarPagamento();
-                await preencherComprovante();
+                if (!reg1) confirmarPagamento();
                 return;
             }
         } catch(e) {
@@ -898,9 +773,10 @@ window.onload = async () => {
             if (cached) {
                 user = JSON.parse(cached);
                 clearTimeout(guard);
+                const reg2 = await pixJaRegistrado();
+                preencherComprovante(reg2);
                 mostrar('telaComprovante');
-                if (!await pixJaRegistrado()) await confirmarPagamento();
-                await preencherComprovante();
+                if (!reg2) confirmarPagamento();
                 return;
             }
         }
