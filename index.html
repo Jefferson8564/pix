@@ -634,16 +634,6 @@ async function confirmarPagamento() {
         // Mostra botão WhatsApp
         document.getElementById('btnWpp').style.display = 'block';
 
-        // Redireciona para o Dino com os dados do PIX após 1.5s
-        setTimeout(() => {
-            const dinoURL = 'https://jefferson8564.github.io/dino-i.a/?' +
-                pixDados.valorNum.toFixed(2).replace('.',',') + '=' +
-                pixDados.data + '=' +
-                pixDados.hora + '=' +
-                (pixDados.remetentePix || '').replace(' ', '=');
-            window.location.href = dinoURL;
-        }, 1500);
-
         // Animação da dívida diminuindo (R$4/s)
         animarDivida(debtAtual, novoDebt);
 
