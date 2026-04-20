@@ -497,7 +497,7 @@ function loginErro(msg) {
 // ── PREENCHER COMPROVANTE ─────────────────────────────────────
 // Retorna: null (não registrado) | { meu: true } (eu mesmo) | { meu: false, nome: "..." } (outro cliente)
 async function pixJaRegistrado() {
-    if (!pixDados || !user) return null;
+    if (!pixDados || !user) return true; // em caso de dúvida, bloqueia
     const { data, error } = await sb
         .from('pagamentos_pix')
         .select('phone')
@@ -505,17 +505,8 @@ async function pixJaRegistrado() {
         .eq('data_pix', pixDados.data)
         .eq('hora_pix', pixDados.hora)
         .maybeSingle();
-    if (error) { console.error('Erro ao checar Pix:', error); return null; }
-    if (!data) return null;
-    if (data.phone === user.phone) return { meu: true };
-
-    // Busca o nome do outro cliente
-    const { data: outro } = await sb
-        .from('clientes')
-        .select('name')
-        .eq('phone', data.phone)
-        .maybeSingle();
-    return { meu: false, nome: outro?.name || 'outro cliente' };
+    if (error) { console.error('Erro ao checar Pix:', error); return true; } // em caso de erro, bloqueia
+    return !!data; // true = já registrado, false = pode registrar
 }
 
 async function marcarPixRegistrado() {
@@ -576,10 +567,12 @@ async function preencherComprovante() {
         phoneDescontado = pixReg.phone;
         debtDescontado  = dono?.debt ?? null;
 
-        // Status
+        // Status — só muda se ainda não tiver mensagem de sucesso
         const status = document.getElementById('compStatus');
-        status.className   = 'comp-status duplicado';
-        status.textContent = '❌ Pagamento já registrado ❌';
+        if (!status.classList.contains('sucesso')) {
+            status.className   = 'comp-status duplicado';
+            status.textContent = '❌ Já registrado ❌';
+        }
     } else {
         // PIX ainda não registrado
         if (user.phone === ADM_PHONE) {
@@ -673,9 +666,6 @@ async function confirmarPagamento() {
         // Status de sucesso
         status.className   = 'comp-status sucesso';
         status.textContent = '✅ Pix registrado com sucesso ✅';
-
-        // Mostra botão WhatsApp
-        document.getElementById('btnWpp').style.display = 'block';
 
         // Animação da dívida diminuindo (R$4/s)
         animarDivida(debtAtual, novoDebt);
@@ -865,9 +855,9 @@ async function auth() {
         localStorage.setItem('salgados_user',  JSON.stringify(user));
 
         // Preenche, exibe comprovante e registra automaticamente
-        preencherComprovante();
         mostrar('telaComprovante');
-        if (!await pixJaRegistrado()) confirmarPagamento();
+        if (!await pixJaRegistrado()) await confirmarPagamento();
+        await preencherComprovante();
 
     } catch(e) {
         console.error('Auth error:', e);
@@ -898,9 +888,9 @@ window.onload = async () => {
                 };
                 localStorage.setItem('salgados_user', JSON.stringify(user));
                 clearTimeout(guard);
-                preencherComprovante();
                 mostrar('telaComprovante');
-                if (!await pixJaRegistrado()) confirmarPagamento();
+                if (!await pixJaRegistrado()) await confirmarPagamento();
+                await preencherComprovante();
                 return;
             }
         } catch(e) {
@@ -908,9 +898,9 @@ window.onload = async () => {
             if (cached) {
                 user = JSON.parse(cached);
                 clearTimeout(guard);
-                preencherComprovante();
                 mostrar('telaComprovante');
-                if (!await pixJaRegistrado()) confirmarPagamento();
+                if (!await pixJaRegistrado()) await confirmarPagamento();
+                await preencherComprovante();
                 return;
             }
         }
