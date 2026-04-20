@@ -639,17 +639,21 @@ async function pixJaRegistrado() {
 }
 
 async function marcarPixRegistrado() {
-    if (!pixDados || !user) return;
+    if (!pixDados || !user) return false;
     const { error } = await sb.from('pagamentos_pix').insert({
         phone:          user.phone,
         valor:          pixDados.valorNum,
         data_pix:       pixDados.data,
         hora_pix:       pixDados.hora,
         destino:        pixDados.destino,
-        remetente_pix:  pixDados.remetentePix,   // nome de quem enviou (da URL)
+        remetente_pix:  pixDados.remetentePix,
         adm:            false
     });
-    if (error) console.error('Erro ao salvar Pix:', error);
+    if (error) {
+        console.error('Erro ao salvar Pix:', error);
+        return false;
+    }
+    return true;
 }
 
 async function preencherComprovante() {
@@ -707,7 +711,7 @@ function animarDivida(deStart, deEnd) {
 async function confirmarPagamento() {
     if (!pixDados || !user) return;
 
-    // ADM apenas visualiza — não registra
+    // ADM apenas visualiza
     if (user.phone === ADM_PHONE) {
         const status = document.getElementById('compStatus');
         status.className   = 'comp-status';
@@ -721,7 +725,26 @@ async function confirmarPagamento() {
     status.textContent = '';
 
     try {
-        // Busca debt atual (fresco do banco)
+        // Double-check antes de qualquer operação (guard race condition)
+        const jaReg = await pixJaRegistrado();
+        if (jaReg) {
+            status.className   = 'comp-status duplicado';
+            status.textContent = jaReg.meu
+                ? '⚠️ Pix já registrado'
+                : `❌ Pix registrado por ${jaReg.nome}`;
+            return;
+        }
+
+        // 1. INSERT primeiro — se falhar, saldo não é tocado
+        const ok = await marcarPixRegistrado();
+        if (!ok) {
+            const jaReg2 = await pixJaRegistrado();
+            status.className   = 'comp-status duplicado';
+            status.textContent = jaReg2 ? '⚠️ Pix já registrado' : '❌ Erro ao registrar. Tente recarregar.';
+            return;
+        }
+
+        // 2. Só agora atualiza o debt
         const { data: clienteAtual, error: errBusca } = await sb
             .from('clientes')
             .select('debt')
@@ -730,10 +753,9 @@ async function confirmarPagamento() {
 
         if (errBusca || !clienteAtual) throw new Error('Cliente não encontrado');
 
-        const debtAtual  = Number(clienteAtual.debt) || 0;
-        const novoDebt   = debtAtual - pixDados.valorNum;
+        const debtAtual = Number(clienteAtual.debt) || 0;
+        const novoDebt  = debtAtual - pixDados.valorNum;
 
-        // Atualiza debt
         const { error: errUpdate } = await sb
             .from('clientes')
             .update({ debt: novoDebt })
@@ -741,18 +763,12 @@ async function confirmarPagamento() {
 
         if (errUpdate) throw errUpdate;
 
-        // Atualiza cache local
         user.debt = novoDebt;
         localStorage.setItem('salgados_user', JSON.stringify(user));
 
-        // Salva o PIX no Supabase
-        await marcarPixRegistrado();
-
-        // Status de sucesso
         status.className   = 'comp-status sucesso';
         status.textContent = '✅ Pix registrado com sucesso ✅';
 
-        // Animação da dívida diminuindo (R$4/s)
         animarDivida(debtAtual, novoDebt);
 
     } catch(err) {
@@ -770,7 +786,9 @@ async function exibirComprovante() {
     if (reg) {
         const status = document.getElementById('compStatus');
         status.className   = 'comp-status duplicado';
-        status.textContent = '❌ Pagamento já registrado ❌';
+        status.textContent = reg.meu
+            ? '⚠️ Pix já registrado'
+            : `❌ Pix registrado por ${reg.nome}`;
     } else {
         confirmarPagamento();
     }
