@@ -248,6 +248,14 @@
             display: none;
         }
         .btn-wpp:active { transform: scale(0.97); }
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, #25d366, #1aad52, #128a3e);
+            color: white; border: none; border-radius: 16px;
+            font-size: 16px; font-weight: 800; cursor: pointer;
+            box-shadow: 0 8px 28px rgba(37,211,102,0.4);
+            transition: transform 0.15s;
+            position: relative; overflow: hidden;
+        }
         .btn-confirmar::before {
             content: ''; position: absolute; inset: 0;
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
@@ -311,7 +319,8 @@
                 <span class="prefix">📱 819</span>
                 <input id="userPhone" class="field-input" type="tel" inputmode="numeric"
                     placeholder="9XXXX-XXXX" maxlength="10"
-                    onkeydown="if(event.key==='Enter')auth()">
+                    onkeydown="if(event.key==='Enter')auth()"
+                    onblur="auth()">
             </div>
 
             <div id="nameBox">
@@ -321,7 +330,7 @@
                     onkeydown="if(event.key==='Enter')auth()">
             </div>
 
-            <button id="btnLogin" class="btn-entrar" onclick="auth()">
+            <button id="btnLogin" class="btn-entrar" onclick="auth()" style="display:none;">
                 🚀 Entrar e Confirmar
             </button>
         </div>
@@ -508,7 +517,7 @@ async function marcarPixRegistrado() {
     if (error) console.error('Erro ao salvar Pix:', error);
 }
 
-async function preencherComprovante(reg) {
+async function preencherComprovante() {
     if (!pixDados || !user) return;
 
     // Cabeçalho fixo — usuário logado (nome + dívida)
@@ -531,13 +540,14 @@ async function preencherComprovante(reg) {
     document.getElementById('compDataHora').textContent   = `${pixDados.data} às ${pixDados.hora}`;
     document.getElementById('compDestino').textContent    = pixDados.destino;
 
-    // Status — usa o resultado já calculado (evita segunda consulta ao banco)
+    // Status
     const status = document.getElementById('compStatus');
+    const reg = await pixJaRegistrado();
     if (reg) {
         status.className   = 'comp-status duplicado';
         status.textContent = reg.meu
             ? '❌ Pagamento já registrado ❌'
-            : `❌ Pagamento já registrado por ${reg.nome} ❌`;
+            : '❌ Pagamento já registrado ❌';
     } else {
         status.className   = 'comp-status';
         status.textContent = '';
@@ -547,7 +557,7 @@ async function preencherComprovante(reg) {
 // ── ANIMAÇÃO DA DÍVIDA ────────────────────────────────────────
 // Velocidade: R$4/s → 400 centavos/s → 4 centavos a cada 10ms
 function animarDivida(deStart, deEnd) {
-    const el = document.getElementById('headerDebt');
+    const el = document.getElementById('clienteDebt');
     let centAtual = Math.round(deStart * 100);
     const centFinal = Math.round(deEnd * 100);
     if (centAtual <= centFinal) return; // nada a animar
@@ -565,6 +575,8 @@ function animarDivida(deStart, deEnd) {
                 ? `- R$ ${Math.abs(val).toFixed(2).replace('.',',')} (crédito)`
                 : 'R$ 0,00';
         el.textContent = fmt;
+        const hd = document.getElementById('headerDebt');
+        if (hd) hd.textContent = fmt;
     }, 10);
 }
 
@@ -588,10 +600,7 @@ async function confirmarPagamento() {
     status.textContent = '';
 
     try {
-        // 1. Registra o PIX PRIMEIRO — evita race condition de duplo abate
-        await marcarPixRegistrado();
-
-        // 2. Busca debt atual (fresco do banco)
+        // Busca debt atual (fresco do banco)
         const { data: clienteAtual, error: errBusca } = await sb
             .from('clientes')
             .select('debt')
@@ -603,7 +612,7 @@ async function confirmarPagamento() {
         const debtAtual  = Number(clienteAtual.debt) || 0;
         const novoDebt   = debtAtual - pixDados.valorNum;
 
-        // 3. Atualiza debt
+        // Atualiza debt
         const { error: errUpdate } = await sb
             .from('clientes')
             .update({ debt: novoDebt })
@@ -615,6 +624,9 @@ async function confirmarPagamento() {
         user.debt = novoDebt;
         localStorage.setItem('salgados_user', JSON.stringify(user));
 
+        // Salva o PIX no Supabase
+        await marcarPixRegistrado();
+
         // Status de sucesso
         status.className   = 'comp-status sucesso';
         status.textContent = '✅ Pix registrado com sucesso ✅';
@@ -623,13 +635,12 @@ async function confirmarPagamento() {
         document.getElementById('btnWpp').style.display = 'block';
 
         // Redireciona para o Dino com os dados do PIX após 1.5s
-        // Fix: replace com /g para substituir TODOS os espaços no nome
         setTimeout(() => {
             const dinoURL = 'https://jefferson8564.github.io/dino-i.a/?' +
                 pixDados.valorNum.toFixed(2).replace('.',',') + '=' +
                 pixDados.data + '=' +
                 pixDados.hora + '=' +
-                (pixDados.remetentePix || '').replace(/ /g, '=');
+                (pixDados.remetentePix || '').replace(' ', '=');
             window.location.href = dinoURL;
         }, 1500);
 
@@ -727,11 +738,9 @@ async function auth() {
         localStorage.setItem('salgados_user',  JSON.stringify(user));
 
         // Preenche, exibe comprovante e registra automaticamente
-        // Uma única consulta ao banco — resultado compartilhado
-        const reg = await pixJaRegistrado();
-        preencherComprovante(reg);
+        preencherComprovante();
         mostrar('telaComprovante');
-        if (!reg) confirmarPagamento();
+        if (!await pixJaRegistrado()) confirmarPagamento();
 
     } catch(e) {
         console.error('Auth error:', e);
@@ -762,10 +771,9 @@ window.onload = async () => {
                 };
                 localStorage.setItem('salgados_user', JSON.stringify(user));
                 clearTimeout(guard);
-                const reg1 = await pixJaRegistrado();
-                preencherComprovante(reg1);
+                preencherComprovante();
                 mostrar('telaComprovante');
-                if (!reg1) confirmarPagamento();
+                if (!await pixJaRegistrado()) confirmarPagamento();
                 return;
             }
         } catch(e) {
@@ -773,10 +781,9 @@ window.onload = async () => {
             if (cached) {
                 user = JSON.parse(cached);
                 clearTimeout(guard);
-                const reg2 = await pixJaRegistrado();
-                preencherComprovante(reg2);
+                preencherComprovante();
                 mostrar('telaComprovante');
-                if (!reg2) confirmarPagamento();
+                if (!await pixJaRegistrado()) confirmarPagamento();
                 return;
             }
         }
