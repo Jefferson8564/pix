@@ -447,14 +447,6 @@
     <div class="orb orb1" style="background:radial-gradient(circle,rgba(37,211,102,0.2) 0%,transparent 70%);"></div>
     <div class="comp-card">
 
-        <!-- Info do cliente — TOPO -->
-        <div class="comp-cliente-box">
-            <div class="comp-avatar" id="clienteAvatar">?</div>
-            <div class="comp-cliente-info">
-                <div class="comp-cliente-name" id="clienteNome">—</div>
-            </div>
-        </div>
-
         <!-- Título -->
         <div class="comp-header">
             <div class="comp-title">Comprovante PIX</div>
@@ -670,10 +662,6 @@ async function preencherComprovante() {
             : 'R$ 0,00';
     document.getElementById('headerDebt').textContent = debtFmt;
 
-    // Avatar (inicial do nome)
-    document.getElementById('clienteAvatar').textContent = user.name.charAt(0).toUpperCase();
-    document.getElementById('clienteNome').textContent   = user.name;
-
     // Dados PIX
     document.getElementById('compValor').textContent      = pixDados.valor;
     document.getElementById('compRemetente').textContent  = pixDados.remetentePix || user.name;
@@ -715,9 +703,17 @@ async function confirmarPagamento() {
     // ADM apenas visualiza
     if (user.phone === ADM_PHONE) {
         const status = document.getElementById('compStatus');
-        status.className   = 'comp-status';
-        status.textContent = '👁️ Modo administrador — visualização apenas';
+        status.className = 'comp-status';
         status.style.color = '#f39c12';
+        status.style.background = 'rgba(243,156,18,0.08)';
+        status.style.border = '1px solid rgba(243,156,18,0.25)';
+        const pixURL = 'https://jefferson8564.github.io/dino-i.a/' + window.location.search;
+        status.innerHTML = '<div style="margin-bottom:10px;">👁️ Modo administrador — visualização apenas</div>'
+            + '<button onclick="window.open(\'' + pixURL + '\',\'_blank\')" '
+            + 'style="width:100%;padding:13px;background:linear-gradient(135deg,#c75b24,#a84a1b);'
+            + 'color:white;border:none;border-radius:14px;font-size:15px;font-weight:800;'
+            + 'cursor:pointer;box-shadow:0 6px 20px rgba(199,91,36,0.4);">'
+            + '🤖 Enviar para o Dino</button>';
         return;
     }
 
