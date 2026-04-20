@@ -423,7 +423,9 @@ const ADM_PHONE     = "81996603348"; // adm: so visualiza, nao registra
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let user     = null;
-let pixDados = null; // { valor, valorNum, data, hora, destino, plataforma }
+let pixDados = null;
+let phoneDescontado = null; // phone do cliente que foi descontado (usado pelo ADM)
+let debtDescontado  = null; // debt atualizado do cliente descontado pelo ADM // { valor, valorNum, data, hora, destino, plataforma }
 
 // ── PARSE URL PIX ────────────────────────────────────────────
 // Formato: ?39,90=18/04/26=12:58=Anderson=Gomes
@@ -533,7 +535,7 @@ async function marcarPixRegistrado() {
 async function preencherComprovante() {
     if (!pixDados || !user) return;
 
-    // Cabeçalho fixo — usuário logado (nome + dívida)
+    // Cabeçalho fixo — sempre o usuário logado
     document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
     document.getElementById('headerNome').textContent   = user.name;
     const debtFmt = user.debt > 0
@@ -543,8 +545,13 @@ async function preencherComprovante() {
             : 'R$ 0,00';
     document.getElementById('headerDebt').textContent = debtFmt;
 
-    // Avatar e nome — mostra o dono do PIX (quem foi descontado no banco)
-    // Busca se esse PIX já foi registrado e por quem
+    // Dados PIX
+    document.getElementById('compValor').textContent      = pixDados.valor;
+    document.getElementById('compRemetente').textContent  = pixDados.remetentePix || user.name;
+    document.getElementById('compDataHora').textContent   = `${pixDados.data} às ${pixDados.hora}`;
+    document.getElementById('compDestino').textContent    = pixDados.destino;
+
+    // Caixinha do nome — mostra quem foi descontado (se já registrado no banco)
     const { data: pixReg } = await sb
         .from('pagamentos_pix')
         .select('phone')
@@ -553,36 +560,37 @@ async function preencherComprovante() {
         .eq('hora_pix', pixDados.hora)
         .maybeSingle();
 
-    let nomeExibir = user.name; // padrão: quem está logado
-    if (pixReg && pixReg.phone !== user.phone) {
-        // PIX registrado por outro cliente — busca o nome dele
+    if (pixReg) {
+        // PIX já registrado — busca o nome do dono
         const { data: dono } = await sb
             .from('clientes')
-            .select('name')
+            .select('name, debt')
             .eq('phone', pixReg.phone)
             .maybeSingle();
-        if (dono?.name) nomeExibir = dono.name;
-    }
-    document.getElementById('clienteAvatar').textContent = nomeExibir.charAt(0).toUpperCase();
-    document.getElementById('clienteNome').textContent   = nomeExibir;
 
-    // Dados PIX
-    document.getElementById('compValor').textContent      = pixDados.valor;
-    document.getElementById('compRemetente').textContent  = pixDados.remetentePix || user.name;
-    document.getElementById('compDataHora').textContent   = `${pixDados.data} às ${pixDados.hora}`;
-    document.getElementById('compDestino').textContent    = pixDados.destino;
+        const nomeDono = dono?.name || '?';
+        document.getElementById('clienteAvatar').textContent = nomeDono.charAt(0).toUpperCase();
+        document.getElementById('clienteNome').textContent   = nomeDono;
 
-    // Status
-    const status = document.getElementById('compStatus');
-    const reg = await pixJaRegistrado();
-    if (reg) {
+        // Guarda para o WhatsApp
+        phoneDescontado = pixReg.phone;
+        debtDescontado  = dono?.debt ?? null;
+
+        // Status
+        const status = document.getElementById('compStatus');
         status.className   = 'comp-status duplicado';
-        status.textContent = reg.meu
-            ? '❌ Pagamento já registrado ❌'
-            : '❌ Pagamento já registrado ❌';
+        status.textContent = '❌ Pagamento já registrado ❌';
     } else {
-        status.className   = 'comp-status';
-        status.textContent = '';
+        // PIX ainda não registrado
+        if (user.phone === ADM_PHONE) {
+            // ADM: caixinha fica em branco até selecionar
+            document.getElementById('clienteAvatar').textContent = '?';
+            document.getElementById('clienteNome').textContent   = '— aguardando seleção —';
+        } else {
+            // Cliente normal: mostra o próprio nome (será descontado dele)
+            document.getElementById('clienteAvatar').textContent = user.name.charAt(0).toUpperCase();
+            document.getElementById('clienteNome').textContent   = user.name;
+        }
     }
 }
 
@@ -655,6 +663,12 @@ async function confirmarPagamento() {
 
         // Salva o PIX no Supabase
         await marcarPixRegistrado();
+
+        // Atualiza caixinha com o nome do cliente que foi descontado
+        document.getElementById('clienteAvatar').textContent = user.name.charAt(0).toUpperCase();
+        document.getElementById('clienteNome').textContent   = user.name;
+        phoneDescontado = user.phone;
+        debtDescontado  = novoDebt;
 
         // Status de sucesso
         status.className   = 'comp-status sucesso';
@@ -745,6 +759,8 @@ async function admRegistrarPagamento() {
         });
 
         // Atualiza UI
+        phoneDescontado = phone; // guarda para o WhatsApp ir para o cliente certo
+        debtDescontado  = novoDebt;
         document.getElementById('admSeletor').style.display = 'none';
         document.getElementById('clienteAvatar').textContent = nome.charAt(0).toUpperCase();
         document.getElementById('clienteNome').textContent   = nome;
@@ -766,7 +782,8 @@ async function admRegistrarPagamento() {
 function enviarWhatsApp() {
     if (!pixDados || !user) return;
 
-    const debtAtual = user.debt;
+    // Se ADM registrou, usa o debt do cliente descontado; senão, o próprio user.debt
+    const debtAtual = (user.phone === ADM_PHONE && debtDescontado !== null) ? debtDescontado : user.debt;
     const saldoLinha = debtAtual > 0
         ? '⚠️ Saldo devedor restante: R$ ' + debtAtual.toFixed(2).replace('.',',')
         : debtAtual < 0
@@ -785,7 +802,9 @@ function enviarWhatsApp() {
         '──────────────────\n' +
         '✅ Obrigado pelo pagamento!';
 
-    const tel = String(user.phone).replace(/\D/g, '');
+    // Se ADM registrou, envia para o cliente descontado; senão, para o próprio usuário
+    const telDestino = (user.phone === ADM_PHONE && phoneDescontado) ? phoneDescontado : user.phone;
+    const tel = String(telDestino).replace(/\D/g, '');
     const link = 'https://wa.me/' + (tel.startsWith('55') ? tel : '55' + tel) + '?text=' + encodeURIComponent(msg);
     window.open(link, '_blank');
 }
