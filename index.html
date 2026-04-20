@@ -548,7 +548,8 @@ let user     = null;
 let pixDados = null; // { valor, valorNum, data, hora, destino, plataforma }
 
 // ── PARSE URL PIX ────────────────────────────────────────────
-// Formato: ?39,90=18/04/26=12:58=Anderson=Gomes
+// Formato: ?50,00=20/04/26=10:00=Eronildo=Santos
+//   1° valor  |  2° data  |  3° hora  |  4° nome  |  5° sobrenome (opcional)
 // Destino fixo: Jefferson Leandro (via picpay)
 function parsearURLPix() {
     const search = decodeURIComponent(window.location.search);
@@ -558,19 +559,19 @@ function parsearURLPix() {
     const raw = search.substring(1);
     const partes = raw.split('=');
 
-    // Exige exatamente 5 partes: valor=data=hora=nome=sobrenome
-    if (partes.length !== 5) return null;
+    // Aceita 4 partes (sem sobrenome) ou 5 (com sobrenome)
+    if (partes.length < 4 || partes.length > 5) return null;
 
-    const valorRaw  = partes[0]; // ex: "39,90"
-    const data      = partes[1]; // ex: "18/04/26"
-    const hora      = partes[2]; // ex: "12:58"
-    const nome      = partes[3]; // ex: "Anderson"
-    const sobrenome = partes[4]; // ex: "Gomes"
+    const valorRaw  = partes[0]; // ex: "50,00"
+    const data      = partes[1]; // ex: "20/04/26"
+    const hora      = partes[2]; // ex: "10:00"
+    const nome      = partes[3]; // ex: "Eronildo"
+    const sobrenome = partes[4] || ''; // ex: "Santos" (opcional)
 
-    // Formato antigo com R$ e/ou plataforma no final: rejeitado
+    // Formato antigo com R$: rejeitado
     if (valorRaw.includes('R$')) return null;
-    // Nome e sobrenome obrigatorios
-    if (!nome.trim() || !sobrenome.trim()) return null;
+    // Nome obrigatório
+    if (!nome.trim()) return null;
 
     // Parseia valor: "39,90" -> 39.90
     const valorNum = parseFloat(
