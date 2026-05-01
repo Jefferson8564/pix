@@ -822,7 +822,8 @@ function setPixStatus(tipo, _titulo, _msgHTML) {
         // Preenche os campos do item
         document.getElementById('pixDupValor').textContent  = pixDados ? pixDados.valor : '—';
         document.getElementById('pixDupData').textContent   = pixDados ? `${pixDados.data} às ${pixDados.hora}` : '—';
-        document.getElementById('pixDupDestino').textContent = pixDados ? pixDados.remetentePix : '—';
+        // _titulo carrega o nome de quem registrou via chamador
+        document.getElementById('pixDupDestino').textContent = _titulo || '❌ Pix já registrado';
         return;
     }
 
@@ -863,13 +864,9 @@ async function confirmarPagamento() {
         const jaReg = await pixJaRegistrado();
         if (jaReg) {
             if (jaReg.meu) {
-                setPixStatus('duplicado',
-                    '⚠️ PIX já foi registrado',
-                    `Este pagamento de <strong>${pixDados.valor}</strong> já foi confirmado anteriormente por você.<br><br>Nenhuma alteração foi feita no seu saldo. Se tiver dúvidas, fale com o atendimento.`);
+                setPixStatus('duplicado', '❌ Pix já registrado por você');
             } else {
-                setPixStatus('duplicado',
-                    '❌ PIX registrado por outra pessoa',
-                    `Este pagamento de <strong>${pixDados.valor}</strong> já foi registrado por <strong>${jaReg.nome}</strong> em ${pixDados.data} às ${pixDados.hora}.<br><br>Se você acha que houve um erro, entre em contato com o atendimento.`);
+                setPixStatus('duplicado', `❌ Pix já registrado por ${jaReg.nome}`);
             }
             return;
         }
@@ -880,13 +877,9 @@ async function confirmarPagamento() {
             const jaReg2 = await pixJaRegistrado();
             if (jaReg2) {
                 const nome2 = jaReg2.meu ? 'você' : jaReg2.nome;
-                setPixStatus('duplicado',
-                    '⚠️ PIX já registrado',
-                    `Este pagamento já foi capturado por <strong>${nome2}</strong>. Nenhuma duplicidade foi adicionada.`);
+                setPixStatus('duplicado', `❌ Pix já registrado por ${nome2}`);
             } else {
-                setPixStatus('duplicado',
-                    '❌ Erro ao registrar',
-                    'Não foi possível salvar o pagamento. Tente recarregar a página.');
+                setPixStatus('duplicado', '❌ Erro ao registrar');
             }
             return;
         }
@@ -957,35 +950,26 @@ async function confirmarPagamento() {
 
     } catch(err) {
         console.error('Erro ao registrar pagamento:', err);
-        setPixStatus('duplicado',
-            '❌ Erro inesperado',
-            'Ocorreu um erro ao processar o pagamento. Tente recarregar a página.');
+        setPixStatus('duplicado', '❌ Erro inesperado — recarregue a página');
     }
 }
 
 // ── EXIBIR COMPROVANTE (agora redireciona para telaConta) ─────
 async function exibirComprovante() {
     mostrar('telaConta');
-    // Carrega dados do cliente e preenche a tela normalmente
     const { data: client } = await sb.from('clientes').select('*').eq('phone', user.phone).maybeSingle();
     if (client) {
         await preencherConta(client);
     } else {
         await preencherConta(JSON.parse(localStorage.getItem('salgados_user') || '{}'));
     }
-    // Mostra o card de PIX pendente
     mostrarPixPendente();
-    // Verifica e processa o PIX
     const reg = await pixJaRegistrado();
     if (reg) {
         if (reg.meu) {
-            setPixStatus('duplicado',
-                '⚠️ PIX já foi registrado',
-                `Este pagamento de <strong>${pixDados.valor}</strong> já foi confirmado anteriormente por você.<br><br>Nenhuma alteração foi feita no seu saldo.`);
+            setPixStatus('duplicado', '❌ Pix já registrado por você');
         } else {
-            setPixStatus('duplicado',
-                '❌ PIX registrado por outra pessoa',
-                `Este pagamento de <strong>${pixDados.valor}</strong> já foi registrado por <strong>${reg.nome}</strong> em ${pixDados.data} às ${pixDados.hora}.<br><br>Se você acha que houve um erro, entre em contato com o atendimento.`);
+            setPixStatus('duplicado', `❌ Pix já registrado por ${reg.nome}`);
         }
     } else {
         confirmarPagamento();
