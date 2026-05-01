@@ -615,6 +615,16 @@
                     <div class="pag-destino" id="pixDupDestino">—</div>
                 </div>
             </div>
+
+            <!-- Estado: sucesso (igual ao pag-item da lista) -->
+            <div id="pixSucessoItem" class="pag-item" style="display:none;">
+                <div class="pag-icon">✅</div>
+                <div class="pag-info">
+                    <div class="pag-valor" id="pixSucValor">—</div>
+                    <div class="pag-data" id="pixSucData">—</div>
+                    <div class="pag-destino" id="pixSucMsg">✅ Pagamento registrado com sucesso</div>
+                </div>
+            </div>
         </div>
 
         <!-- Pagamentos recentes -->
@@ -815,21 +825,28 @@ function mostrarPixPendente() {
 
 function setPixStatus(tipo, _titulo, _msgHTML) {
     if (tipo === 'duplicado') {
-        // Esconde o card completo, mostra o item estilo lista
         document.getElementById('pixPendenteCard').style.display = 'none';
+        document.getElementById('pixSucessoItem').style.display  = 'none';
         document.getElementById('pixDuplicadoItem').style.display = 'flex';
-        document.getElementById('pixPendenteSectionTitle').textContent = '⚡ Pagamento recebido';
-        // Preenche os campos do item
         document.getElementById('pixDupValor').textContent  = pixDados ? pixDados.valor : '—';
         document.getElementById('pixDupData').textContent   = pixDados ? `${pixDados.data} às ${pixDados.hora}` : '—';
-        // _titulo carrega o nome de quem registrou via chamador
         document.getElementById('pixDupDestino').textContent = _titulo || '❌ Pix já registrado';
         return;
     }
 
-    // Para sucesso / processando / adm — comportamento normal no card completo
-    document.getElementById('pixPendenteCard').style.display = 'flex';
+    if (tipo === 'sucesso') {
+        document.getElementById('pixPendenteCard').style.display  = 'none';
+        document.getElementById('pixDuplicadoItem').style.display = 'none';
+        document.getElementById('pixSucessoItem').style.display   = 'flex';
+        document.getElementById('pixSucValor').textContent = pixDados ? pixDados.valor : '—';
+        document.getElementById('pixSucData').textContent  = pixDados ? `${pixDados.data} às ${pixDados.hora}` : '—';
+        return;
+    }
+
+    // Processando / ADM — card completo
+    document.getElementById('pixPendenteCard').style.display  = 'flex';
     document.getElementById('pixDuplicadoItem').style.display = 'none';
+    document.getElementById('pixSucessoItem').style.display   = 'none';
 
     const card    = document.getElementById('pixPendenteCard');
     const spinner = document.getElementById('pixSpinner');
@@ -841,10 +858,6 @@ function setPixStatus(tipo, _titulo, _msgHTML) {
     msgEl.className   = 'pix-pendente-msg ' + tipo;
     msgEl.innerHTML   = _msgHTML;
     msgEl.style.display = _msgHTML ? 'block' : 'none';
-
-    if (tipo === 'sucesso') {
-        spinner.innerHTML = '<div style="font-size:22px;">✅</div>';
-    }
 }
 
 // ── CONFIRMAR PAGAMENTO (integrado na telaConta) ──────────────
@@ -941,9 +954,7 @@ async function confirmarPagamento() {
                 ? `Crédito de R$ ${Math.abs(novoDebt).toFixed(2).replace('.',',')} disponível`
                 : 'Conta zerada — em dia! ✅';
 
-        setPixStatus('sucesso',
-            '✅ Pagamento registrado com sucesso',
-            `<strong>${pixDados.valor}</strong> recebido de <strong>${pixDados.remetentePix}</strong> em ${pixDados.data} às ${pixDados.hora} foram confirmados e descontados do seu saldo.<br><br>📊 Saldo atual: <strong>${novoDebtFmt}</strong>`);
+        setPixStatus('sucesso');
 
         // Recarrega lista de pagamentos
         carregarPagamentos(user.phone);
