@@ -790,54 +790,11 @@ async function carregarPagamentos(phone) {
     }
 }
 
-// ── SOM DE DINHEIRO ───────────────────────────────────────────
-function tocarSomDinheiro() {
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-        function nota(freq, inicio, dur, vol = 0.3) {
-            const osc  = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, ctx.currentTime + inicio);
-            gain.gain.setValueAtTime(0, ctx.currentTime + inicio);
-            gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + inicio + 0.01);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + inicio + dur);
-            osc.start(ctx.currentTime + inicio);
-            osc.stop(ctx.currentTime + inicio + dur + 0.05);
-        }
-
-        // Melodia de caixa registradora — notas subindo
-        nota(523, 0.00, 0.12); // C5
-        nota(659, 0.10, 0.12); // E5
-        nota(784, 0.20, 0.12); // G5
-        nota(880, 0.30, 0.12); // A5
-        nota(1047,0.40, 0.18); // C6 — nota final mais longa
-
-        // "Ding" metálico no fim
-        const osc2  = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
-        osc2.type = 'triangle';
-        osc2.frequency.setValueAtTime(1800, ctx.currentTime + 0.55);
-        gain2.gain.setValueAtTime(0.25, ctx.currentTime + 0.55);
-        gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.1);
-        osc2.start(ctx.currentTime + 0.55);
-        osc2.stop(ctx.currentTime + 1.15);
-
-    } catch(e) { /* silencioso se bloqueado */ }
-}
-
 // ── ANIMAÇÃO DA DÍVIDA ────────────────────────────────────────
 function animarDivida(deStart, deEnd) {
     let centAtual = Math.round(deStart * 100);
     const centFinal = Math.round(deEnd * 100);
     if (centAtual <= centFinal) return;
-
-    tocarSomDinheiro();
 
     const intervalo = setInterval(() => {
         centAtual -= 4;
