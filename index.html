@@ -185,11 +185,7 @@
         .header-stat-icon { font-size: 16px; line-height: 1; }
         .header-stat-val  { font-size: 12px; font-weight: 900; color: white; line-height: 1; }
 
-        /* Empurra o card para baixo para não ficar atrás do header */
-        #telaComprovante { padding-top: 80px; }
-
-        /* ── COMPROVANTE ── */
-        #telaComprovante {
+        /* ── COMPROVANTE (estilos mantidos por compatibilidade) ── */
             background: #0d0508;
             overflow-y: auto;
             z-index: 5;
@@ -418,6 +414,73 @@
             font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.25);
         }
 
+        /* ── CARD PIX PENDENTE ── */
+        .pix-pendente-card {
+            width: 100%;
+            border-radius: 20px;
+            padding: 20px;
+            background: rgba(37,211,102,0.06);
+            border: 1.5px solid rgba(37,211,102,0.25);
+            display: flex; flex-direction: column; gap: 10px;
+            animation: cardIn 0.5s cubic-bezier(0.34,1.2,0.64,1) both;
+            transition: background 0.4s, border-color 0.4s;
+        }
+        .pix-pendente-card.duplicado {
+            background: rgba(231,76,60,0.07);
+            border-color: rgba(231,76,60,0.3);
+        }
+        .pix-pendente-card.sucesso {
+            background: rgba(37,211,102,0.1);
+            border-color: rgba(37,211,102,0.45);
+        }
+        .pix-pendente-header {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .pix-pendente-spinner {
+            width: 28px; height: 28px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .spinner-ring {
+            width: 22px; height: 22px; border-radius: 50%;
+            border: 2.5px solid rgba(37,211,102,0.2);
+            border-top-color: #25d366;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .pix-pendente-titulo {
+            font-size: 14px; font-weight: 800; color: rgba(255,255,255,0.7);
+        }
+        .pix-pendente-valor {
+            font-size: 30px; font-weight: 900;
+            background: linear-gradient(135deg, #25d366, #1aad52);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            line-height: 1;
+        }
+        .pix-pendente-detalhe {
+            font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.35);
+            line-height: 1.5;
+        }
+        .pix-pendente-msg {
+            font-size: 13px; font-weight: 700;
+            color: rgba(255,255,255,0.6);
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            display: none;
+            line-height: 1.5;
+        }
+        .pix-pendente-msg.sucesso {
+            color: #25d366;
+            background: rgba(37,211,102,0.08);
+            border-color: rgba(37,211,102,0.2);
+        }
+        .pix-pendente-msg.duplicado {
+            color: #ff6b6b;
+            background: rgba(231,76,60,0.08);
+            border-color: rgba(231,76,60,0.2);
+        }
+
         /* Botão sair */
         .btn-sair {
             width: 100%; padding: 14px;
@@ -491,50 +554,7 @@
     </div>
 </div>
 
-<!-- ── COMPROVANTE ── -->
-<div id="telaComprovante" class="tela oculta">
-    <!-- Cabeçalho fixo com nome e dívida do usuário logado -->
-    <div class="user-header" id="userHeader">
-        <div class="user-header-avatar" id="headerAvatar">?</div>
-        <div class="user-header-info">
-            <div class="user-header-name" id="headerNome">—</div>
-            <div class="user-header-debt-label">Sua dívida</div>
-            <div class="user-header-debt-valor" id="headerDebt">R$ 0,00</div>
-        </div>
-    </div>
 
-    <div class="orb orb1" style="background:radial-gradient(circle,rgba(37,211,102,0.2) 0%,transparent 70%);"></div>
-    <div class="comp-card">
-
-        <!-- Título -->
-        <div class="comp-header">
-            <div class="comp-title">Comprovante PIX</div>
-        </div>
-
-        <!-- Dados do comprovante -->
-        <div class="comp-box">
-            <div class="comp-row">
-                <div class="comp-row-label">Valor</div>
-                <div class="comp-row-value comp-valor-big" id="compValor">—</div>
-            </div>
-            <div class="comp-row">
-                <div class="comp-row-label">Quem enviou</div>
-                <div class="comp-row-value" id="compRemetente">—</div>
-            </div>
-            <div class="comp-row">
-                <div class="comp-row-label">Data e Hora</div>
-                <div class="comp-row-value" id="compDataHora">—</div>
-            </div>
-            <div class="comp-row">
-                <div class="comp-row-label">Quem recebeu (Destino)</div>
-                <div class="comp-row-value" id="compDestino">—</div>
-            </div>
-        </div>
-
-        <div id="compStatus" class="comp-status"></div>
-
-    </div>
-</div>
 
 
 <!-- ── TELA CONTA ── -->
@@ -567,6 +587,22 @@
             </div>
             <div class="debito-valor" id="saldoValor">R$ 0,00</div>
             <div class="debito-valor-label" id="saldoDesc">Valor em aberto</div>
+        </div>
+
+        <!-- PIX em processamento (só aparece quando vem da URL) -->
+        <div id="pixPendenteWrap" style="display:none;">
+            <div class="secao-titulo" style="margin-bottom:10px;">⚡ Pagamento recebido</div>
+            <div id="pixPendenteCard" class="pix-pendente-card">
+                <div class="pix-pendente-header">
+                    <div class="pix-pendente-spinner" id="pixSpinner">
+                        <div class="spinner-ring"></div>
+                    </div>
+                    <div class="pix-pendente-titulo" id="pixPendenteTitulo">Registrando pagamento…</div>
+                </div>
+                <div class="pix-pendente-valor" id="pixPendenteValor">—</div>
+                <div class="pix-pendente-detalhe" id="pixPendenteDetalhe">Aguarde…</div>
+                <div class="pix-pendente-msg" id="pixPendenteMsg"></div>
+            </div>
         </div>
 
         <!-- Pagamentos recentes -->
@@ -645,7 +681,7 @@ function parsearURLPix() {
 
 // ── TELAS ────────────────────────────────────────────────────
 function mostrar(id) {
-    ['telaLoading','telaLogin','telaComprovante','telaConta','telaErroConexao'].forEach(t => {
+    ['telaLoading','telaLogin','telaConta','telaErroConexao'].forEach(t => {
         document.getElementById(t).classList.add('oculta');
     });
     const el = document.getElementById(id);
@@ -702,34 +738,41 @@ async function marcarPixRegistrado() {
     return true;
 }
 
-async function preencherComprovante() {
-    if (!pixDados || !user) return;
+// ── CARREGAR LISTA DE PAGAMENTOS ──────────────────────────────
+async function carregarPagamentos(phone) {
+    const lista = document.getElementById('listaPagamentos');
+    try {
+        const { data: pagamentos } = await sb
+            .from('pagamentos_pix')
+            .select('valor, data_pix, hora_pix, destino')
+            .eq('phone', phone)
+            .order('created_at', { ascending: false })
+            .limit(15);
 
-    // Cabeçalho fixo — usuário logado (nome + dívida)
-    document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
-    document.getElementById('headerNome').textContent   = user.name;
-    const debtFmt = user.debt > 0
-        ? `R$ ${user.debt.toFixed(2).replace('.',',')}`
-        : user.debt < 0
-            ? `- R$ ${Math.abs(user.debt).toFixed(2).replace('.',',')} (crédito)`
-            : 'R$ 0,00';
-    document.getElementById('headerDebt').textContent = debtFmt;
-
-    // Dados PIX
-    document.getElementById('compValor').textContent      = pixDados.valor;
-    document.getElementById('compRemetente').textContent  = pixDados.remetentePix || user.name;
-    document.getElementById('compDataHora').textContent   = `${pixDados.data} às ${pixDados.hora}`;
-    document.getElementById('compDestino').textContent    = pixDados.destino;
-
+        if (!pagamentos || pagamentos.length === 0) {
+            lista.innerHTML = '<div class="conta-vazio">Nenhum pagamento registrado ainda</div>';
+        } else {
+            lista.innerHTML = pagamentos.map(p => `
+                <div class="pag-item">
+                    <div class="pag-icon">💸</div>
+                    <div class="pag-info">
+                        <div class="pag-valor">R$ ${Number(p.valor).toFixed(2).replace('.',',')}</div>
+                        <div class="pag-data">${p.data_pix} às ${p.hora_pix}</div>
+                        <div class="pag-destino">${p.destino || ''}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch(e) {
+        lista.innerHTML = '<div class="conta-vazio">Erro ao carregar pagamentos</div>';
+    }
 }
 
 // ── ANIMAÇÃO DA DÍVIDA ────────────────────────────────────────
-// Velocidade: R$4/s → 400 centavos/s → 4 centavos a cada 10ms
 function animarDivida(deStart, deEnd) {
-    const el = document.getElementById('clienteDebt');
     let centAtual = Math.round(deStart * 100);
     const centFinal = Math.round(deEnd * 100);
-    if (centAtual <= centFinal) return; // nada a animar
+    if (centAtual <= centFinal) return;
 
     const intervalo = setInterval(() => {
         centAtual -= 4;
@@ -741,60 +784,86 @@ function animarDivida(deStart, deEnd) {
         const fmt = val > 0
             ? `R$ ${val.toFixed(2).replace('.',',')}`
             : val < 0
-                ? `- R$ ${Math.abs(val).toFixed(2).replace('.',',')} (crédito)`
+                ? `R$ ${Math.abs(val).toFixed(2).replace('.',',')}`
                 : 'R$ 0,00';
-        el.textContent = fmt;
-        const hd = document.getElementById('headerDebt');
-        if (hd) hd.textContent = fmt;
+        const el = document.getElementById('saldoValor');
+        if (el) el.textContent = fmt;
     }, 10);
 }
 
-// ── CONFIRMAR PAGAMENTO ───────────────────────────────────────
+// ── EXIBIR PIX PENDENTE NA TELA CONTA ────────────────────────
+function mostrarPixPendente() {
+    if (!pixDados) return;
+    const wrap = document.getElementById('pixPendenteWrap');
+    wrap.style.display = 'block';
+    document.getElementById('pixPendenteValor').textContent = pixDados.valor;
+    document.getElementById('pixPendenteDetalhe').textContent =
+        `${pixDados.data} às ${pixDados.hora}  ·  ${pixDados.remetentePix}  →  ${pixDados.destino}`;
+}
+
+function setPixStatus(tipo, titulo, msgHTML) {
+    const card    = document.getElementById('pixPendenteCard');
+    const spinner = document.getElementById('pixSpinner');
+    const tituloEl= document.getElementById('pixPendenteTitulo');
+    const msgEl   = document.getElementById('pixPendenteMsg');
+
+    card.className    = 'pix-pendente-card ' + tipo;
+    tituloEl.textContent = titulo;
+    msgEl.className   = 'pix-pendente-msg ' + tipo;
+    msgEl.innerHTML   = msgHTML;
+    msgEl.style.display = msgHTML ? 'block' : 'none';
+
+    if (tipo === 'sucesso' || tipo === 'duplicado') {
+        spinner.innerHTML = tipo === 'sucesso' ? '<div style="font-size:22px;">✅</div>' : '<div style="font-size:22px;">⚠️</div>';
+    }
+}
+
+// ── CONFIRMAR PAGAMENTO (integrado na telaConta) ──────────────
 async function confirmarPagamento() {
     if (!pixDados || !user) return;
 
     // ADM apenas visualiza
     if (user.phone === ADM_PHONE) {
-        const status = document.getElementById('compStatus');
-        status.className = 'comp-status';
-        status.style.color = '#f39c12';
-        status.style.background = 'rgba(243,156,18,0.08)';
-        status.style.border = '1px solid rgba(243,156,18,0.25)';
         const pixURL = 'https://jefferson8564.github.io/dino-i.a/' + window.location.search;
-        status.innerHTML = '<div style="margin-bottom:10px;">👁️ Modo administrador — visualização apenas</div>'
-            + '<button onclick="window.open(\'' + pixURL + '\',\'_blank\')" '
-            + 'style="width:100%;padding:13px;background:linear-gradient(135deg,#c75b24,#a84a1b);'
-            + 'color:white;border:none;border-radius:14px;font-size:15px;font-weight:800;'
-            + 'cursor:pointer;box-shadow:0 6px 20px rgba(199,91,36,0.4);">'
-            + '🤖 Enviar para o Dino</button>';
+        setPixStatus('', '👁️ Modo administrador — só visualização',
+            `<button onclick="window.open('${pixURL}','_blank')" style="width:100%;padding:13px;background:linear-gradient(135deg,#c75b24,#a84a1b);color:white;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(199,91,36,0.4);">🤖 Enviar para o Dino</button>`);
         return;
     }
 
-    const status = document.getElementById('compStatus');
-    status.className   = 'comp-status';
-    status.textContent = '';
-
     try {
-        // Double-check antes de qualquer operação (guard race condition)
+        // Checa duplicidade antes de tudo
         const jaReg = await pixJaRegistrado();
         if (jaReg) {
-            status.className   = 'comp-status duplicado';
-            status.textContent = jaReg.meu
-                ? '⚠️ Pix já registrado'
-                : `❌ Pix registrado por ${jaReg.nome}`;
+            if (jaReg.meu) {
+                setPixStatus('duplicado',
+                    '⚠️ PIX já foi registrado',
+                    `Este pagamento de <strong>${pixDados.valor}</strong> já foi confirmado anteriormente por você.<br><br>Nenhuma alteração foi feita no seu saldo. Se tiver dúvidas, fale com o atendimento.`);
+            } else {
+                setPixStatus('duplicado',
+                    '❌ PIX registrado por outra pessoa',
+                    `Este pagamento de <strong>${pixDados.valor}</strong> já foi registrado por <strong>${jaReg.nome}</strong> em ${pixDados.data} às ${pixDados.hora}.<br><br>Se você acha que houve um erro, entre em contato com o atendimento.`);
+            }
             return;
         }
 
-        // 1. INSERT primeiro — se falhar, saldo não é tocado
+        // Insere o pagamento
         const ok = await marcarPixRegistrado();
         if (!ok) {
             const jaReg2 = await pixJaRegistrado();
-            status.className   = 'comp-status duplicado';
-            status.textContent = jaReg2 ? '⚠️ Pix já registrado' : '❌ Erro ao registrar. Tente recarregar.';
+            if (jaReg2) {
+                const nome2 = jaReg2.meu ? 'você' : jaReg2.nome;
+                setPixStatus('duplicado',
+                    '⚠️ PIX já registrado',
+                    `Este pagamento já foi capturado por <strong>${nome2}</strong>. Nenhuma duplicidade foi adicionada.`);
+            } else {
+                setPixStatus('duplicado',
+                    '❌ Erro ao registrar',
+                    'Não foi possível salvar o pagamento. Tente recarregar a página.');
+            }
             return;
         }
 
-        // 2. Só agora atualiza o debt
+        // Atualiza o saldo (debt)
         const { data: clienteAtual, error: errBusca } = await sb
             .from('clientes')
             .select('debt')
@@ -816,29 +885,80 @@ async function confirmarPagamento() {
         user.debt = novoDebt;
         localStorage.setItem('salgados_user', JSON.stringify(user));
 
-        status.className   = 'comp-status sucesso';
-        status.textContent = '✅ Pix registrado com sucesso ✅';
+        // Atualiza visualmente o card de saldo
+        const card       = document.getElementById('saldoCard');
+        const badgeIcon  = document.getElementById('saldoBadgeIcon');
+        const badgeLabel = document.getElementById('saldoBadge');
+        const valorEl    = document.getElementById('saldoValor');
+        const desc       = document.getElementById('saldoDesc');
+
+        if (novoDebt > 0) {
+            card.className = 'debito-valor-card';
+            badgeIcon.textContent = '⚠️'; badgeLabel.textContent = 'DÉBITO PENDENTE';
+            valorEl.className = 'debito-valor';
+            valorEl.textContent = 'R$ ' + novoDebt.toFixed(2).replace('.',',');
+            desc.textContent = 'Valor que você ainda deve';
+        } else if (novoDebt < 0) {
+            card.className = 'debito-valor-card credito';
+            badgeIcon.textContent = '✅'; badgeLabel.textContent = 'CRÉDITO DISPONÍVEL';
+            valorEl.className = 'debito-valor credito';
+            valorEl.textContent = 'R$ ' + Math.abs(novoDebt).toFixed(2).replace('.',',');
+            desc.textContent = 'Será descontado no próximo pedido';
+        } else {
+            card.className = 'debito-valor-card zerado';
+            badgeIcon.textContent = '✅'; badgeLabel.textContent = 'EM DIA';
+            valorEl.className = 'debito-valor zerado';
+            valorEl.textContent = 'R$ 0,00';
+            desc.textContent = 'Nenhuma pendência';
+        }
 
         animarDivida(debtAtual, novoDebt);
 
+        const novoDebtFmt = novoDebt > 0
+            ? `R$ ${novoDebt.toFixed(2).replace('.',',')} em aberto`
+            : novoDebt < 0
+                ? `Crédito de R$ ${Math.abs(novoDebt).toFixed(2).replace('.',',')} disponível`
+                : 'Conta zerada — em dia! ✅';
+
+        setPixStatus('sucesso',
+            '✅ Pagamento registrado com sucesso',
+            `<strong>${pixDados.valor}</strong> recebido de <strong>${pixDados.remetentePix}</strong> em ${pixDados.data} às ${pixDados.hora} foram confirmados e descontados do seu saldo.<br><br>📊 Saldo atual: <strong>${novoDebtFmt}</strong>`);
+
+        // Recarrega lista de pagamentos
+        carregarPagamentos(user.phone);
+
     } catch(err) {
         console.error('Erro ao registrar pagamento:', err);
-        status.className   = 'comp-status duplicado';
-        status.textContent = '❌ Erro ao registrar. Tente recarregar.';
+        setPixStatus('duplicado',
+            '❌ Erro inesperado',
+            'Ocorreu um erro ao processar o pagamento. Tente recarregar a página.');
     }
 }
 
-// ── EXIBIR COMPROVANTE (await + decide status) ────────────────
+// ── EXIBIR COMPROVANTE (agora redireciona para telaConta) ─────
 async function exibirComprovante() {
-    await preencherComprovante();
-    mostrar('telaComprovante');
+    mostrar('telaConta');
+    // Carrega dados do cliente e preenche a tela normalmente
+    const { data: client } = await sb.from('clientes').select('*').eq('phone', user.phone).maybeSingle();
+    if (client) {
+        await preencherConta(client);
+    } else {
+        await preencherConta(JSON.parse(localStorage.getItem('salgados_user') || '{}'));
+    }
+    // Mostra o card de PIX pendente
+    mostrarPixPendente();
+    // Verifica e processa o PIX
     const reg = await pixJaRegistrado();
     if (reg) {
-        const status = document.getElementById('compStatus');
-        status.className   = 'comp-status duplicado';
-        status.textContent = reg.meu
-            ? '⚠️ Pix já registrado'
-            : `❌ Pix registrado por ${reg.nome}`;
+        if (reg.meu) {
+            setPixStatus('duplicado',
+                '⚠️ PIX já foi registrado',
+                `Este pagamento de <strong>${pixDados.valor}</strong> já foi confirmado anteriormente por você.<br><br>Nenhuma alteração foi feita no seu saldo.`);
+        } else {
+            setPixStatus('duplicado',
+                '❌ PIX registrado por outra pessoa',
+                `Este pagamento de <strong>${pixDados.valor}</strong> já foi registrado por <strong>${reg.nome}</strong> em ${pixDados.data} às ${pixDados.hora}.<br><br>Se você acha que houve um erro, entre em contato com o atendimento.`);
+        }
     } else {
         confirmarPagamento();
     }
@@ -886,32 +1006,7 @@ async function preencherConta(cliente) {
     document.getElementById('statDiamantes').textContent = cliente.diamantes ?? 0;
 
     // Pagamentos recentes
-    const lista = document.getElementById('listaPagamentos');
-    try {
-        const { data: pagamentos } = await sb
-            .from('pagamentos_pix')
-            .select('valor, data_pix, hora_pix, destino')
-            .eq('phone', cliente.phone)
-            .order('created_at', { ascending: false })
-            .limit(15);
-
-        if (!pagamentos || pagamentos.length === 0) {
-            lista.innerHTML = '<div class="conta-vazio">Nenhum pagamento registrado ainda</div>';
-        } else {
-            lista.innerHTML = pagamentos.map(p => `
-                <div class="pag-item">
-                    <div class="pag-icon">💸</div>
-                    <div class="pag-info">
-                        <div class="pag-valor">R$ ${Number(p.valor).toFixed(2).replace('.',',')}</div>
-                        <div class="pag-data">${p.data_pix} às ${p.hora_pix}</div>
-                        <div class="pag-destino">${p.destino || ''}</div>
-                    </div>
-                </div>
-            `).join('');
-        }
-    } catch(e) {
-        lista.innerHTML = '<div class="conta-vazio">Erro ao carregar pagamentos</div>';
-    }
+    await carregarPagamentos(cliente.phone);
 }
 
 function sairConta() {
