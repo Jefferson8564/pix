@@ -591,7 +591,9 @@
 
         <!-- PIX em processamento (só aparece quando vem da URL) -->
         <div id="pixPendenteWrap" style="display:none;">
-            <div class="secao-titulo" style="margin-bottom:10px;">⚡ Pagamento recebido</div>
+            <div class="secao-titulo" style="margin-bottom:10px;" id="pixPendenteSectionTitle">⚡ Pagamento recebido</div>
+
+            <!-- Estado: processando / sucesso (card completo) -->
             <div id="pixPendenteCard" class="pix-pendente-card">
                 <div class="pix-pendente-header">
                     <div class="pix-pendente-spinner" id="pixSpinner">
@@ -602,6 +604,16 @@
                 <div class="pix-pendente-valor" id="pixPendenteValor">—</div>
                 <div class="pix-pendente-detalhe" id="pixPendenteDetalhe">Aguarde…</div>
                 <div class="pix-pendente-msg" id="pixPendenteMsg"></div>
+            </div>
+
+            <!-- Estado: duplicado (igual ao pag-item da lista) -->
+            <div id="pixDuplicadoItem" class="pag-item" style="display:none;">
+                <div class="pag-icon" style="background:rgba(243,156,18,0.12);border-color:rgba(243,156,18,0.25);">⚠️</div>
+                <div class="pag-info">
+                    <div class="pag-valor" id="pixDupValor">—</div>
+                    <div class="pag-data" id="pixDupData">—</div>
+                    <div class="pag-destino" id="pixDupDestino">—</div>
+                </div>
             </div>
         </div>
 
@@ -801,20 +813,36 @@ function mostrarPixPendente() {
         `${pixDados.data} às ${pixDados.hora}  ·  ${pixDados.remetentePix}  →  ${pixDados.destino}`;
 }
 
-function setPixStatus(tipo, titulo, msgHTML) {
+function setPixStatus(tipo, _titulo, _msgHTML) {
+    if (tipo === 'duplicado') {
+        // Esconde o card completo, mostra o item estilo lista
+        document.getElementById('pixPendenteCard').style.display = 'none';
+        document.getElementById('pixDuplicadoItem').style.display = 'flex';
+        document.getElementById('pixPendenteSectionTitle').textContent = '⚡ Pagamento recebido';
+        // Preenche os campos do item
+        document.getElementById('pixDupValor').textContent  = pixDados ? pixDados.valor : '—';
+        document.getElementById('pixDupData').textContent   = pixDados ? `${pixDados.data} às ${pixDados.hora}` : '—';
+        document.getElementById('pixDupDestino').textContent = pixDados ? pixDados.remetentePix : '—';
+        return;
+    }
+
+    // Para sucesso / processando / adm — comportamento normal no card completo
+    document.getElementById('pixPendenteCard').style.display = 'flex';
+    document.getElementById('pixDuplicadoItem').style.display = 'none';
+
     const card    = document.getElementById('pixPendenteCard');
     const spinner = document.getElementById('pixSpinner');
     const tituloEl= document.getElementById('pixPendenteTitulo');
     const msgEl   = document.getElementById('pixPendenteMsg');
 
     card.className    = 'pix-pendente-card ' + tipo;
-    tituloEl.textContent = titulo;
+    tituloEl.textContent = _titulo;
     msgEl.className   = 'pix-pendente-msg ' + tipo;
-    msgEl.innerHTML   = msgHTML;
-    msgEl.style.display = msgHTML ? 'block' : 'none';
+    msgEl.innerHTML   = _msgHTML;
+    msgEl.style.display = _msgHTML ? 'block' : 'none';
 
-    if (tipo === 'sucesso' || tipo === 'duplicado') {
-        spinner.innerHTML = tipo === 'sucesso' ? '<div style="font-size:22px;">✅</div>' : '<div style="font-size:22px;">⚠️</div>';
+    if (tipo === 'sucesso') {
+        spinner.innerHTML = '<div style="font-size:22px;">✅</div>';
     }
 }
 
