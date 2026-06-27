@@ -640,6 +640,47 @@
 </div>
 
 <script>
+
+// ═══════════════════════════════════════════
+// SYNC DE SESSÃO ENTRE PÁGINAS (BroadcastChannel)
+// ═══════════════════════════════════════════
+(function() {
+    var _bc = null;
+    try { _bc = new BroadcastChannel('rei_coxinha_session'); } catch(e) {}
+
+    function telaAtualEh(id) {
+        var el = document.getElementById(id);
+        return el && !el.classList.contains('oculta');
+    }
+
+    if (_bc) {
+        _bc.onmessage = function(ev) {
+            var msg = ev.data || {};
+            if (msg.type === 'LOGOUT') {
+                localStorage.removeItem('salgados_phone');
+                localStorage.removeItem('salgados_user');
+                if (telaAtualEh('telaConta')) window.location.reload();
+            } else if (msg.type === 'LOGIN' && msg.phone) {
+                localStorage.setItem('salgados_phone', msg.phone);
+                if (msg.user) localStorage.setItem('salgados_user', JSON.stringify(msg.user));
+                if (telaAtualEh('telaLogin')) window.location.reload();
+            }
+        };
+    }
+
+    window.addEventListener('storage', function(ev) {
+        if (ev.key === 'salgados_phone') {
+            if (!ev.newValue) {
+                if (telaAtualEh('telaConta')) window.location.reload();
+            } else if (ev.newValue && !ev.oldValue) {
+                if (telaAtualEh('telaLogin')) window.location.reload();
+            }
+        }
+    });
+
+    window._bcSend = function(msg) { if (_bc) _bc.postMessage(msg); };
+})();
+
 // ── CONFIG ──────────────────────────────────────────────────
 const SUPABASE_URL  = "https://vpeyqgijajywgswmezlh.supabase.co";
 const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZXlxZ2lqYWp5d2dzd21lemxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTM1MDIsImV4cCI6MjA4NjgyOTUwMn0.LA5Cbof7IKWAA7l8YbCuPzANpCy0rX_Dro4l9fcDgoQ";
@@ -1035,6 +1076,7 @@ async function preencherConta(cliente) {
 function sairConta() {
     localStorage.removeItem('salgados_phone');
     localStorage.removeItem('salgados_user');
+    window._bcSend && window._bcSend({ type: 'LOGOUT' });
     user = null;
     mostrar('telaLogin');
 }
@@ -1093,6 +1135,7 @@ async function auth() {
         };
         localStorage.setItem('salgados_phone', phone);
         localStorage.setItem('salgados_user',  JSON.stringify(user));
+        window._bcSend && window._bcSend({ type: 'LOGIN', phone: phone, user: user });
 
         // Preenche, exibe comprovante e registra automaticamente
         if (!pixDados) {
