@@ -695,6 +695,24 @@ let pixDados = null; // { valor, valorNum, data, hora, destino, plataforma }
 // Formato: ?50,00=20/04/26=10:00=Eronildo=Santos
 //   1° valor  |  2° data  |  3° hora  |  4° nome  |  5° sobrenome (opcional)
 // Destino fixo: Jefferson Leandro (via picpay)
+function parseValorPix(raw) {
+    raw = (raw || '').trim();
+    if (raw.includes(',')) {
+        // Formato BR: ponto é milhar, vírgula é decimal → "1.234,56"
+        return parseFloat(raw.replace(/\./g, '').replace(',', '.'));
+    }
+    if (raw.includes('.')) {
+        const partes = raw.split('.');
+        // Um único ponto com 1 ou 2 dígitos depois = decimal ("12.00", "12.5")
+        if (partes.length === 2 && partes[1].length <= 2) {
+            return parseFloat(raw);
+        }
+        // Mais de um ponto ou 3+ dígitos depois = milhar sem decimal ("1.234")
+        return parseFloat(raw.replace(/\./g, ''));
+    }
+    return parseFloat(raw);
+}
+
 function parsearURLPix() {
     const search = decodeURIComponent(window.location.search);
     if (!search) return null;
@@ -717,10 +735,9 @@ function parsearURLPix() {
     // Nome obrigatório
     if (!nome.trim()) return null;
 
-    // Parseia valor: "39,90" -> 39.90
-    const valorNum = parseFloat(
-        valorRaw.replace(/\./g,'').replace(',','.')
-    );
+    // Parseia valor aceitando formato BR ("39,90" / "1.234,56") e formato
+    // com ponto decimal ("39.90"), que antes era lido como milhar e inflava o valor.
+    const valorNum = parseValorPix(valorRaw);
     if (isNaN(valorNum) || valorNum <= 0) return null;
 
     // Nome completo de quem enviou
